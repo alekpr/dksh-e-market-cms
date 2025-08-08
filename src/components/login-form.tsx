@@ -1,3 +1,6 @@
+import { useState } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +17,33 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const { login, isLoading } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Get the page user was trying to access before login
+  const from = (location.state as any)?.from?.pathname || "/"
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    if (!email || !password) {
+      setError("Please fill in all fields")
+      return
+    }
+
+    const success = await login(email, password)
+    if (success) {
+      navigate(from, { replace: true })
+    } else {
+      setError("Invalid email or password")
+    }
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -24,15 +54,23 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
+              {error && (
+                <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
+                  {error}
+                </div>
+              )}
               <div className="grid gap-3">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="m@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-3">
@@ -45,13 +83,20 @@ export function LoginForm({
                     Forgot your password?
                   </a>
                 </div>
-                <Input id="password" type="password" required />
+                <Input 
+                  id="password" 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required 
+                  disabled={isLoading}
+                />
               </div>
               <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full">
-                  Login
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Logging in..." : "Login"}
                 </Button>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" disabled={isLoading}>
                   Login with Google
                 </Button>
               </div>
@@ -63,6 +108,15 @@ export function LoginForm({
               </a>
             </div>
           </form>
+          
+          {/* Demo Credentials */}
+          <div className="mt-6 p-4 bg-muted rounded-md">
+            <h4 className="text-sm font-medium mb-2">Demo Credentials:</h4>
+            <div className="text-xs space-y-1">
+              <div><strong>Admin:</strong> admin@example.com / admin123</div>
+              <div><strong>User:</strong> user@example.com / user123</div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
