@@ -1,15 +1,18 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { authApi, tokenStorage, type User } from '@/lib/api'
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
+import { authApi, storeApi, tokenStorage, type User, type Store } from '@/lib/api'
 
 // Types
 export interface AuthContextType {
   user: User | null
+  userStore: Store | null
   login: (email: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
   isLoading: boolean
   isAuthenticated: boolean
   error: string | null
   clearError: () => void
+  refreshUserStore: () => Promise<void>
+  hasValidStore: boolean
 }
 
 // Create context
@@ -18,8 +21,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 // Auth Provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [userStore, setUserStore] = useState<Store | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Check if user has a valid store (for merchants)
+  const hasValidStore = useMemo(() => {
+    if (!user || user.role !== 'merchant') return true // Non-merchants don't need store
+    return !!(userStore && userStore.status === 'active' && user.merchantInfo?.storeId === userStore._id)
+  }, [user, userStore])
+
+  // Fetch user's store information (for merchants)
+  const refreshUserStore = async () => {
+    if (!user || user.role !== 'merchant' || !user.merchantInfo?.storeId) {
+      setUserStore(null)
+      return
+    }
+
+    try {
+      const response = await storeApi.getStore(user.merchantInfo.storeId)
+      if (response.success && response.data?.data) {
+        setUserStore(response.data.data)
+      } else {
+        console.warn('Failed to fetch user store:', response.message)
+        setUserStore(null)
+      }
+    } catch (error: any) {
+      console.error('Error fetching user store:', error)
+      setUserStore(null)
+    }
+  }
 
   // Check for stored auth on component mount
   useEffect(() => {
@@ -35,22 +66,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (response.status === 'success' && response.data?.user) {
               setUser(response.data.user)
               tokenStorage.setUser(response.data.user)
+              
+              // Fetch store info for merchants
+              if (response.data.user.role === 'merchant' && response.data.user.merchantInfo?.storeId) {
+                await refreshUserStore()
+              }
             } else {
               // Invalid stored data, clear it
               console.log('Token invalid, clearing stored auth data')
               tokenStorage.clearTokens()
               setUser(null)
+              setUserStore(null)
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Token verification failed:', error)
-            tokenStorage.clearTokens()
-            setUser(null)
+            
+            // If token is expired/invalid, clear auth data and redirect to login
+            if (error?.status === 401 || error?.message?.includes('401')) {
+              console.log('Access token expired, clearing auth data')
+              tokenStorage.clearTokens()
+              setUser(null)
+              setUserStore(null)
+            } else {
+              // For other errors, also clear auth data
+              tokenStorage.clearTokens()
+              setUser(null)
+              setUserStore(null)
+            }
           }
+        } else {
+          // No stored auth data
+          setUser(null)
+          setUserStore(null)
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
         tokenStorage.clearTokens()
         setUser(null)
+        setUserStore(null)
       } finally {
         setIsLoading(false)
       }
@@ -69,6 +122,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (response.status === 'success' && response.data?.user) {
         setUser(response.data.user)
+        
+        // Fetch store info for merchants
+        if (response.data.user.role === 'merchant' && response.data.user.merchantInfo?.storeId) {
+          await refreshUserStore()
+        }
+        
         setIsLoading(false)
         return true
       } else {
@@ -78,7 +137,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error('Login error:', error)
-      setError(error.message || 'Login failed. Please check your credentials.')
+      let errorMessage = 'Login failed. Please check your credentials.'
+      
+      // Handle specific error types
+      if (error.status === 401) {
+        errorMessage = 'Invalid email or password.'
+      } else if (error.status === 429) {
+        errorMessage = 'Too many login attempts. Please try again later.'
+      } else if (error.status >= 500) {
+        errorMessage = 'Server error. Please try again later.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      setError(errorMessage)
       setIsLoading(false)
       return false
     }
@@ -93,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout error:', error)
     } finally {
       setUser(null)
+      setUserStore(null)
       setIsLoading(false)
     }
   }
@@ -104,12 +177,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextType = {
     user,
+    userStore,
     login,
     logout,
     isLoading,
     isAuthenticated: !!user,
     error,
-    clearError
+    clearError,
+    refreshUserStore,
+    hasValidStore
   }
 
   return (

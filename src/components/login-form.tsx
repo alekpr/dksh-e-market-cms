@@ -124,21 +124,39 @@ export function LoginForm({
             </div>
           </form>
           
-          {/* Demo Credentials */}
+                    {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-muted rounded-md">
             <h4 className="text-sm font-medium mb-2">Demo Credentials:</h4>
             <div className="text-xs space-y-1">
               <div 
                 className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
-                onClick={() => fillCredentials('store.admin@dksh.com', 'admin123')}
+                onClick={() => fillCredentials('admin@dksh.com', 'admin123')}
               >
-                <strong>Admin:</strong> store.admin@dksh.com / admin123
+                <strong>Admin:</strong> admin@dksh.com / admin123
               </div>
               <div 
                 className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
-                onClick={() => fillCredentials('test.admin@dksh.com', 'password123')}
+                onClick={() => fillCredentials('merchant@dksh.com', 'admin123')}
               >
-                <strong>User:</strong> test.admin@dksh.com / password123
+                <strong>Merchant:</strong> merchant@dksh.com / admin123
+              </div>
+              <div 
+                className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
+                onClick={() => fillCredentials('store.manager@dksh.com', 'manager123')}
+              >
+                <strong>Store Manager:</strong> store.manager@dksh.com / manager123
+              </div>
+              <div 
+                className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
+                onClick={() => fillCredentials('customer@dksh.com', 'customer123')}
+              >
+                <strong>Customer:</strong> customer@dksh.com / customer123
+              </div>
+              <div 
+                className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
+                onClick={() => fillCredentials('test.customer@dksh.com', 'customer123')}
+              >
+                <strong>Test Customer:</strong> test.customer@dksh.com / customer123
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">

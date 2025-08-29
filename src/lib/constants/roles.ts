@@ -110,7 +110,7 @@ export const NAVIGATION_CONFIG = {
   },
   categories: {
     title: 'Category Management',
-    icon: 'folder',
+    icon: 'categories',
     path: '/categories'
   },
   promotions: {

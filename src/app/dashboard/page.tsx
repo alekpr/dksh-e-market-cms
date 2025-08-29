@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Activity
 } from "lucide-react"
+import { DebugPanel } from '@/components/debug-panel'
 
 export default function DashboardPage() {
   const { user } = useAuth()

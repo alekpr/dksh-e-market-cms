@@ -13,6 +13,7 @@ import {
   IconChartBar,
 } from "@tabler/icons-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { StoreStatusBadge } from "@/components/store-validation"
 import { getNavigationItems, NAVIGATION_CONFIG, type UserRole } from "@/lib/constants/roles"
 
 import { NavMain } from "@/components/nav-main"
@@ -63,6 +64,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <h2 className="text-lg font-semibold">CMS Admin</h2>
         <p className="text-xs text-muted-foreground capitalize">{user.role} Dashboard</p>
+        {user.role === 'merchant' && (
+          <div className="mt-2">
+            <StoreStatusBadge />
+          </div>
+        )}
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItems} />

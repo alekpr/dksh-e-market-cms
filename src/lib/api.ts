@@ -61,6 +61,8 @@ export interface User {
   merchantInfo?: {
     storeId: string
     storeName: string
+    storeStatus?: 'pending' | 'active' | 'suspended' | 'inactive'
+    canManageStore?: boolean
   }
   activitySummary?: {
     orderCount?: number
@@ -527,13 +529,20 @@ class ApiClient {
       const data = await response.json()
       
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`)
+        // Include status code in error message for better debugging
+        const errorMessage = data.message || `HTTP error! status: ${response.status}`
+        const error = new Error(errorMessage)
+        // Add response status to error for better handling
+        ;(error as any).status = response.status
+        throw error
       }
       
       return data
     } else {
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const error = new Error(`HTTP error! status: ${response.status}`)
+        ;(error as any).status = response.status
+        throw error
       }
       
       return {
@@ -544,15 +553,23 @@ class ApiClient {
   }
 
   private async handleTokenRefresh(): Promise<string | null> {
+    // Skip token refresh if no refresh token is available
+    const refreshToken = tokenStorage.getRefreshToken()
+    if (!refreshToken) {
+      console.log('No refresh token available, clearing auth data')
+      tokenStorage.clearTokens()
+      
+      // Only redirect to login if we're not already on the login page
+      if (!window.location.pathname.includes('/login')) {
+        console.log('Redirecting to login page...')
+        window.location.href = '/login'
+      }
+      return null
+    }
+
     // Prevent multiple simultaneous refresh requests
     if (this.refreshing) {
       return this.refreshing
-    }
-
-    const refreshToken = tokenStorage.getRefreshToken()
-    if (!refreshToken) {
-      tokenStorage.clearTokens()
-      return null
     }
 
     this.refreshing = this.performTokenRefresh(refreshToken)
@@ -567,6 +584,7 @@ class ApiClient {
 
   private async performTokenRefresh(refreshToken: string): Promise<string | null> {
     try {
+      console.log('Attempting to refresh token...')
       const response = await fetch(`${this.baseURL}/auth/refresh-token`, {
         method: 'POST',
         headers: {
@@ -576,12 +594,22 @@ class ApiClient {
       })
 
       if (!response.ok) {
+        console.error('Token refresh failed with status:', response.status)
         throw new Error('Token refresh failed')
       }
 
       const data: ApiResponse<RefreshTokenResponse> = await response.json()
       
-      if (data.status === 'success' && data.accessToken) {
+      if (data.status === 'success' && data.data?.accessToken) {
+        console.log('Token refresh successful')
+        tokenStorage.setAccessToken(data.data.accessToken)
+        if (data.data.refreshToken) {
+          tokenStorage.setRefreshToken(data.data.refreshToken)
+        }
+        return data.data.accessToken
+      } else if (data.accessToken) {
+        // Handle different response format
+        console.log('Token refresh successful (alternative format)')
         tokenStorage.setAccessToken(data.accessToken)
         if (data.refreshToken) {
           tokenStorage.setRefreshToken(data.refreshToken)
@@ -589,12 +617,16 @@ class ApiClient {
         return data.accessToken
       }
 
-      throw new Error('Invalid refresh response')
+      throw new Error('Invalid refresh response format')
     } catch (error) {
       console.error('Token refresh error:', error)
       tokenStorage.clearTokens()
-      // Redirect to login page
-      window.location.href = '/login'
+      
+      // Only redirect to login if we're not already on the login page
+      if (!window.location.pathname.includes('/login')) {
+        console.log('Redirecting to login page...')
+        window.location.href = '/login'
+      }
       return null
     }
   }
@@ -637,7 +669,7 @@ class ApiClient {
       tokenStorage.setAccessToken(response.token)
       tokenStorage.setUser(response.data.user)
       
-      // If refresh token is provided, store it
+      // If refresh token is provided in the response, store it
       if (response.refreshToken) {
         tokenStorage.setRefreshToken(response.refreshToken)
       }
@@ -730,6 +762,14 @@ export const storeApi = {
   // Search stores
   searchStores: (query: string) =>
     apiClient.get<{ count: number; data: Store[] }>(`/stores/search?query=${encodeURIComponent(query)}`),
+
+  // Get current user's store (for merchants)
+  getCurrentUserStore: () =>
+    apiClient.get<{ success: boolean; data: Store }>('/stores/my-store'),
+
+  // Verify store access for merchant
+  verifyStoreAccess: (storeId: string) =>
+    apiClient.get<{ success: boolean; data: { hasAccess: boolean; store?: Store } }>(`/stores/${storeId}/verify-access`),
 }
 
 // Product management API methods
@@ -832,6 +872,7 @@ export const categoryApi = {
     asTree?: boolean
     sort?: string
     order?: 'asc' | 'desc'
+    store?: string
   }) => {
     const queryParams = new URLSearchParams()
     if (params?.page) queryParams.append('page', params.page.toString())
@@ -845,9 +886,20 @@ export const categoryApi = {
     if (params?.asTree !== undefined) queryParams.append('asTree', params.asTree.toString())
     if (params?.sort) queryParams.append('sort', params.sort)
     if (params?.order) queryParams.append('order', params.order)
+    if (params?.store) queryParams.append('store', params.store)
     
     const query = queryParams.toString()
-    return apiClient.get<{ data: Category[] }>(`/categories${query ? `?${query}` : ''}`)
+    return apiClient.get<{
+      success: boolean
+      count: number
+      pagination?: {
+        total: number
+        page: number
+        pages: number
+        limit: number
+      }
+      data: Category[]
+    }>(`/categories${query ? `?${query}` : ''}`)
   },
 
   // Get a specific category by ID or slug
@@ -855,15 +907,65 @@ export const categoryApi = {
     withChildren?: boolean
     withProducts?: boolean
     withBreadcrumbs?: boolean
+    store?: string
   }) => {
     const queryParams = new URLSearchParams()
     if (params?.withChildren !== undefined) queryParams.append('withChildren', params.withChildren.toString())
     if (params?.withProducts !== undefined) queryParams.append('withProducts', params.withProducts.toString())
     if (params?.withBreadcrumbs !== undefined) queryParams.append('withBreadcrumbs', params.withBreadcrumbs.toString())
+    if (params?.store) queryParams.append('store', params.store)
     
     const query = queryParams.toString()
-    return apiClient.get<{ data: Category }>(`/categories/${idOrSlug}${query ? `?${query}` : ''}`)
+    return apiClient.get<{ success: boolean; data: Category }>(`/categories/${idOrSlug}${query ? `?${query}` : ''}`)
   },
+
+  // Create a new category
+  createCategory: (data: {
+    name: string
+    description?: string
+    parent?: string
+    image?: string
+    icon?: string
+    isActive?: boolean
+    order?: number
+    store?: string
+    meta?: {
+      title?: string
+      description?: string
+      keywords?: string
+    }
+  }) =>
+    apiClient.post<{ success: boolean; data: Category }>('/categories', data),
+
+  // Update a category
+  updateCategory: (id: string, data: {
+    name?: string
+    description?: string
+    parent?: string
+    image?: string
+    icon?: string
+    isActive?: boolean
+    order?: number
+    store?: string
+    meta?: {
+      title?: string
+      description?: string
+      keywords?: string
+    }
+  }) =>
+    apiClient.put<{ success: boolean; data: Category }>(`/categories/${id}`, data),
+
+  // Delete a category
+  deleteCategory: (id: string) =>
+    apiClient.delete<{ success: boolean; message: string }>(`/categories/${id}`),
+
+  // Update category order
+  reorderCategories: (items: Array<{ id: string; order: number }>) =>
+    apiClient.put<{ success: boolean; message: string }>('/categories/reorder', { items }),
+
+  // Update featured categories
+  updateFeaturedCategories: (items: Array<{ id: string; featuredOrder: number }>) =>
+    apiClient.put<{ success: boolean; message: string; data: Category[] }>('/categories/featured', { items }),
 
   // Get featured categories
   getFeaturedCategories: (limit?: number) => {
@@ -871,12 +973,12 @@ export const categoryApi = {
     if (limit) queryParams.append('limit', limit.toString())
     
     const query = queryParams.toString()
-    return apiClient.get<{ data: Category[] }>(`/categories/featured${query ? `?${query}` : ''}`)
+    return apiClient.get<{ success: boolean; count: number; data: Category[] }>(`/categories/featured${query ? `?${query}` : ''}`)
   },
 
   // Search categories
   searchCategories: (query: string) =>
-    apiClient.get<{ data: Category[] }>(`/categories/search?query=${encodeURIComponent(query)}`),
+    apiClient.get<{ success: boolean; count: number; data: Category[] }>(`/categories/search?query=${encodeURIComponent(query)}`),
 }
 
 // User management API methods
