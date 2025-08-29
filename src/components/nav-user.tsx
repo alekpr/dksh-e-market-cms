@@ -40,8 +40,8 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const { logout } = useAuth()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
   }
 
   const getUserInitials = (name: string) => {

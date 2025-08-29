@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
@@ -19,30 +19,45 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const { login, isLoading } = useAuth()
+  const [localError, setLocalError] = useState("")
+  const { login, isLoading, error, clearError } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
   // Get the page user was trying to access before login
   const from = (location.state as any)?.from?.pathname || "/"
 
+  // Clear errors when component mounts or when inputs change
+  useEffect(() => {
+    clearError()
+    setLocalError("")
+  }, [email, password, clearError])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setLocalError("")
 
     if (!email || !password) {
-      setError("Please fill in all fields")
+      setLocalError("Please fill in all fields")
       return
     }
 
     const success = await login(email, password)
     if (success) {
       navigate(from, { replace: true })
-    } else {
-      setError("Invalid email or password")
     }
+    // Error will be handled by AuthContext and displayed via the error state
   }
+
+  // Handle demo credential clicks
+  const fillCredentials = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail)
+    setPassword(demoPassword)
+    setLocalError("")
+    clearError()
+  }
+
+  const displayError = localError || error
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -56,9 +71,9 @@ export function LoginForm({
         <CardContent>
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
-              {error && (
+              {displayError && (
                 <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
-                  {error}
+                  {displayError}
                 </div>
               )}
               <div className="grid gap-3">
@@ -113,9 +128,22 @@ export function LoginForm({
           <div className="mt-6 p-4 bg-muted rounded-md">
             <h4 className="text-sm font-medium mb-2">Demo Credentials:</h4>
             <div className="text-xs space-y-1">
-              <div><strong>Admin:</strong> admin@example.com / admin123</div>
-              <div><strong>User:</strong> user@example.com / user123</div>
+              <div 
+                className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
+                onClick={() => fillCredentials('store.admin@dksh.com', 'admin123')}
+              >
+                <strong>Admin:</strong> store.admin@dksh.com / admin123
+              </div>
+              <div 
+                className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
+                onClick={() => fillCredentials('test.admin@dksh.com', 'password123')}
+              >
+                <strong>User:</strong> test.admin@dksh.com / password123
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Click on any credential to auto-fill the form
+            </p>
           </div>
         </CardContent>
       </Card>

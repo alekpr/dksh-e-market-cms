@@ -1,40 +1,15 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-
-// Mock user data
-const MOCK_USERS = [
-  {
-    id: '1',
-    email: 'admin@example.com',
-    password: 'admin123',
-    name: 'Administrator',
-    role: 'admin',
-    avatar: '/avatars/admin.jpg'
-  },
-  {
-    id: '2',
-    email: 'user@example.com',
-    password: 'user123',
-    name: 'User Demo',
-    role: 'user',
-    avatar: '/avatars/user.jpg'
-  }
-]
+import { authApi, tokenStorage, type User } from '@/lib/api'
 
 // Types
-export interface User {
-  id: string
-  email: string
-  name: string
-  role: 'admin' | 'user'
-  avatar: string
-}
-
 export interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   isLoading: boolean
   isAuthenticated: boolean
+  error: string | null
+  clearError: () => void
 }
 
 // Create context
@@ -44,57 +19,87 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Check for stored auth on component mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('auth_user')
-    if (storedUser) {
+    const initializeAuth = async () => {
       try {
-        const parsedUser = JSON.parse(storedUser)
-        setUser(parsedUser)
+        const storedUser = tokenStorage.getUser()
+        const accessToken = tokenStorage.getAccessToken()
+        
+        if (storedUser && accessToken) {
+          // Verify token with server
+          try {
+            const response = await authApi.getCurrentUser()
+            if (response.status === 'success' && response.data?.user) {
+              setUser(response.data.user)
+              tokenStorage.setUser(response.data.user)
+            } else {
+              // Invalid stored data, clear it
+              console.log('Token invalid, clearing stored auth data')
+              tokenStorage.clearTokens()
+              setUser(null)
+            }
+          } catch (error) {
+            console.error('Token verification failed:', error)
+            tokenStorage.clearTokens()
+            setUser(null)
+          }
+        }
       } catch (error) {
-        console.error('Error parsing stored user:', error)
-        localStorage.removeItem('auth_user')
+        console.error('Auth initialization error:', error)
+        tokenStorage.clearTokens()
+        setUser(null)
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    initializeAuth()
   }, [])
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true)
+    setError(null)
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Find user in mock data
-    const foundUser = MOCK_USERS.find(
-      u => u.email === email && u.password === password
-    )
-    
-    if (foundUser) {
-      const userWithoutPassword: User = {
-        id: foundUser.id,
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role as 'admin' | 'user',
-        avatar: foundUser.avatar
-      }
+    try {
+      const response = await authApi.login({ email, password })
       
-      setUser(userWithoutPassword)
-      localStorage.setItem('auth_user', JSON.stringify(userWithoutPassword))
+      if (response.status === 'success' && response.data?.user) {
+        setUser(response.data.user)
+        setIsLoading(false)
+        return true
+      } else {
+        setError(response.message || 'Login failed')
+        setIsLoading(false)
+        return false
+      }
+    } catch (error: any) {
+      console.error('Login error:', error)
+      setError(error.message || 'Login failed. Please check your credentials.')
       setIsLoading(false)
-      return true
+      return false
     }
-    
-    setIsLoading(false)
-    return false
   }
 
   // Logout function
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('auth_user')
+  const logout = async (): Promise<void> => {
+    setIsLoading(true)
+    try {
+      await authApi.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setUser(null)
+      setIsLoading(false)
+    }
+  }
+
+  // Clear error function
+  const clearError = () => {
+    setError(null)
   }
 
   const value: AuthContextType = {
@@ -102,7 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     isLoading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    error,
+    clearError
   }
 
   return (
@@ -120,6 +127,3 @@ export function useAuth() {
   }
   return context
 }
-
-// Export mock users for reference
-export { MOCK_USERS }
