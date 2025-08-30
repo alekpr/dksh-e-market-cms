@@ -95,7 +95,10 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   }
 
   const inventoryStatus = getInventoryStatus(product)
-  const categoryNames = getCategoryNames(product.categories)
+  
+  // Handle both categories (array) and category (single) structures
+  const productCategories = product.categories || (product.category ? [product.category] : [])
+  const categoryNames = getCategoryNames(productCategories)
 
   return (
     <div className="space-y-6">
@@ -227,11 +230,16 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
               <div className="space-y-3">
                 <div>
-                  <span className="font-medium">Short Description:</span>
-                  <p className="text-muted-foreground mt-1">{product.description.short}</p>
+                  <span className="font-medium">Description:</span>
+                  <p className="text-muted-foreground mt-1">
+                    {typeof product.description === 'string' 
+                      ? product.description 
+                      : product.description?.short || 'No description available'
+                    }
+                  </p>
                 </div>
                 
-                {product.description.detailed && (
+                {typeof product.description === 'object' && product.description?.detailed && (
                   <div>
                     <span className="font-medium">Detailed Description:</span>
                     <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
@@ -302,13 +310,13 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                       <div>
                         <span className="text-sm font-medium text-muted-foreground">Stock</span>
                         <p className={`font-medium ${
-                          variant.inventory.quantity === 0 ? 'text-red-600' :
-                          variant.inventory.quantity < (variant.inventory.lowStockThreshold || 5) ? 'text-yellow-600' :
+                          (typeof variant.inventory === 'number' ? variant.inventory : variant.inventory.quantity) === 0 ? 'text-red-600' :
+                          (typeof variant.inventory === 'number' ? variant.inventory : variant.inventory.quantity) < ((typeof variant.inventory === 'object' ? variant.inventory.lowStockThreshold : null) || 5) ? 'text-yellow-600' :
                           'text-green-600'
                         }`}>
-                          {variant.inventory.quantity} units
+                          {typeof variant.inventory === 'number' ? variant.inventory : variant.inventory.quantity} units
                         </p>
-                        {variant.inventory.lowStockThreshold && (
+                        {typeof variant.inventory === 'object' && variant.inventory.lowStockThreshold && (
                           <p className="text-xs text-muted-foreground">
                             Low stock at: {variant.inventory.lowStockThreshold}
                           </p>
@@ -316,11 +324,11 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                       </div>
                     </div>
                     
-                    {Object.keys(variant.attributes).length > 0 && (
+                    {variant.attributes && Object.keys(variant.attributes).length > 0 && (
                       <div className="mt-3 pt-3 border-t">
                         <span className="text-sm font-medium text-muted-foreground">Attributes:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {Object.entries(variant.attributes).map(([key, value]) => (
+                          {Object.entries(variant.attributes || {}).map(([key, value]) => (
                             <Badge key={key} variant="secondary" className="text-xs">
                               {key}: {value}
                             </Badge>

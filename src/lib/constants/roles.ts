@@ -16,7 +16,9 @@ export const NAVIGATION_PERMISSIONS = {
   [USER_ROLES.ADMIN]: [
     'dashboard',
     'stores',      // Store Management - เฉพาะ Admin
-    'users'        // User Management - เฉพาะ Admin
+    'users',       // User Management - เฉพาะ Admin
+    'orders',      // Order Management - Admin ดูได้ทั้งหมด
+    'analytics'    // Analytics - Admin ดูได้ทั้งหมด
   ],
   [USER_ROLES.MERCHANT]: [
     'dashboard',

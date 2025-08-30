@@ -164,7 +164,9 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
             <div>
               <div className="font-medium">{product.name}</div>
               <div className="text-sm text-muted-foreground">
-                {product.description.short}
+                {typeof product.description === 'string' 
+                  ? (product.description as string).substring(0, 60) + ((product.description as string).length > 60 ? '...' : '')
+                  : (product.description as any)?.short || 'No description'}
               </div>
             </div>
           </div>
@@ -178,7 +180,9 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
         const product = row.original
         return (
           <div className="text-sm">
-            {getCategoryNames(product.categories)}
+            {product.category 
+              ? (typeof product.category === 'string' ? product.category : (product.category as any)?.name || 'Unknown')
+              : (product.categories ? getCategoryNames(product.categories) : 'No category')}
           </div>
         )
       },

@@ -233,14 +233,14 @@ export interface ProductVariant {
   _id: string;
   name: string;
   price: number;
-  attributes: Record<string, string>;
+  attributes?: Record<string, string>; // Make attributes optional
   sku?: string;
   barcode?: string;
   inventory: {
     quantity: number;
     trackInventory: boolean;
     lowStockThreshold?: number;
-  };
+  } | number; // Support both object and number for inventory
   isDefault: boolean;
   images?: string[];
 }
@@ -253,12 +253,13 @@ export interface Product {
   description: {
     short: string;
     detailed: string;
-  };
+  } | string; // Support both object and string formats
   categories: Category[] | string[];
+  category?: Category | string; // Support single category
   store: Store | string;
   status: 'draft' | 'active' | 'archived' | 'deleted';
   featured: boolean;
-  images: string[];
+  images: string[] | { url: string; alt?: string; isPrimary?: boolean }[]; // Support both formats
   hasVariants: boolean;
   variants: ProductVariant[];
   rating?: {
@@ -340,6 +341,139 @@ export interface Category {
   path?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Order API Types
+export interface OrderItem {
+  _id: string;
+  product: Product | string;
+  quantity: number;
+  price: number;
+  total: number;
+  variant?: ProductVariant;
+}
+
+export interface OrderAddress {
+  street: string;
+  city: string;
+  state?: string;
+  zipCode: string;
+  country: string;
+  additionalInfo?: string;
+}
+
+export interface Order {
+  _id: string;
+  orderNumber: string;
+  user: User | { _id: string; name: string; email: string; fullName: string; }; // API uses 'user' not 'customer'
+  customer?: User | string; // Keep for backward compatibility
+  store?: Store | string;
+  items: OrderItem[];
+  subtotal: number;
+  shippingCost: number;
+  tax: number;
+  totalAmount: number; // API uses 'totalAmount'
+  total?: number; // Keep for backward compatibility
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  // Payment info comes from nested payment object
+  payment?: {
+    method: string;
+    status: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
+    amount: number;
+    currency: string;
+    refundedAmount: number;
+  };
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded'; // Derived from payment.status
+  paymentMethod?: string; // Derived from payment.method
+  paymentId?: string;
+  shippingAddress: OrderAddress;
+  billingAddress?: OrderAddress;
+  shipping?: {
+    method: string;
+    status: string;
+    estimatedDelivery?: string;
+    cost: number;
+  };
+  notes?: string;
+  trackingNumber?: string;
+  merchantNotes?: string;
+  cancelReason?: string;
+  refundReason?: string;
+  assignedTo?: User | string | null;
+  estimatedDelivery?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Additional fields from API
+  discount?: number;
+  metadata?: any;
+  isGuestOrder?: boolean;
+  deviceInfo?: any;
+  statusHistory?: Array<{
+    status: string;
+    notes: string;
+    updatedBy: string | null;
+    _id: string;
+  }>;
+  transactionLogs?: any[];
+  storeOrders?: Array<{
+    store: string;
+    items: string[];
+    subtotal: number;
+    status: string;
+    _id: string;
+  }>;
+  __v?: number;
+}
+
+export interface CreateOrderRequest {
+  customer?: string;
+  store?: string;
+  items: Array<{
+    product: string;
+    quantity: number;
+    price?: number;
+    variant?: string;
+  }>;
+  shippingAddress: OrderAddress;
+  billingAddress?: OrderAddress;
+  paymentMethod?: string;
+  notes?: string;
+}
+
+export interface UpdateOrderRequest {
+  status?: Order['status'];
+  paymentStatus?: Order['paymentStatus'];
+  trackingNumber?: string;
+  merchantNotes?: string;
+  assignedTo?: string;
+  estimatedDelivery?: string;
+}
+
+export interface OrderStatusUpdateRequest {
+  status: Order['status'];
+  notes?: string;
+}
+
+export interface OrderAssignmentRequest {
+  assignedTo: string;
+  notes?: string;
+}
+
+export interface OrderFilters {
+  page?: number;
+  limit?: number;
+  status?: string;
+  paymentStatus?: string;
+  store?: string;
+  customer?: string;
+  assignedTo?: string;
+  startDate?: string;
+  endDate?: string;
+  minTotal?: number;
+  maxTotal?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface StoreListResponse {
@@ -1103,4 +1237,168 @@ export const userApi = {
   // Bulk operations
   bulkUserOperations: (data: BulkUserOperationRequest) =>
     apiClient.post<{ data: any }>('/users/bulk', data),
+}
+
+// Order management API methods
+export const orderApi = {
+  // Get all orders with filtering and pagination
+  getOrders: (params?: OrderFilters) => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.paymentStatus) queryParams.append('paymentStatus', params.paymentStatus)
+    if (params?.store) queryParams.append('store', params.store)
+    if (params?.customer) queryParams.append('customer', params.customer)
+    if (params?.assignedTo) queryParams.append('assignedTo', params.assignedTo)
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    if (params?.minTotal) queryParams.append('minTotal', params.minTotal.toString())
+    if (params?.maxTotal) queryParams.append('maxTotal', params.maxTotal.toString())
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
+    if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{ 
+      success: boolean; 
+      count: number; 
+      pagination?: any; 
+      data: Order[] 
+    }>(`/orders${query ? `?${query}` : ''}`)
+  },
+
+  // Get a specific order by ID
+  getOrder: (id: string) => 
+    apiClient.get<{ success: boolean; data: Order }>(`/orders/${id}`),
+
+  // Create a new order (guest orders)
+  createOrder: (data: CreateOrderRequest) =>
+    apiClient.post<{ success: boolean; data: Order }>('/orders', data),
+
+  // Update an order (admin/merchant)
+  updateOrder: (id: string, data: UpdateOrderRequest) =>
+    apiClient.put<{ success: boolean; data: Order }>(`/orders/${id}`, data),
+
+  // Update order status
+  updateOrderStatus: (id: string, data: OrderStatusUpdateRequest) =>
+    apiClient.put<{ success: boolean; data: Order }>(`/orders/${id}/status`, data),
+
+  // Assign order to merchant/staff
+  assignOrder: (id: string, data: OrderAssignmentRequest) =>
+    apiClient.patch<{ success: boolean; data: Order }>(`/orders/${id}/assign`, data),
+
+  // Cancel an order
+  cancelOrder: (id: string, reason?: string) =>
+    apiClient.patch<{ success: boolean; data: Order }>(`/orders/${id}/cancel`, { reason }),
+
+  // Get store orders (for merchants)
+  getStoreOrders: (storeId: string, params?: OrderFilters) => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.paymentStatus) queryParams.append('paymentStatus', params.paymentStatus)
+    if (params?.assignedTo) queryParams.append('assignedTo', params.assignedTo)
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
+    if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{ 
+      success: boolean; 
+      count: number; 
+      data: Order[] 
+    }>(`/stores/${storeId}/orders${query ? `?${query}` : ''}`)
+  },
+
+  // Get customer orders
+  getCustomerOrders: (customerId: string, params?: OrderFilters) => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.paymentStatus) queryParams.append('paymentStatus', params.paymentStatus)
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
+    if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{ 
+      success: boolean; 
+      count: number; 
+      data: Order[] 
+    }>(`/customers/${customerId}/orders${query ? `?${query}` : ''}`)
+  },
+
+  // Get order statistics
+  getOrderStatistics: (params?: {
+    store?: string;
+    startDate?: string;
+    endDate?: string;
+    groupBy?: 'day' | 'week' | 'month';
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.store) queryParams.append('store', params.store)
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    if (params?.groupBy) queryParams.append('groupBy', params.groupBy)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{ 
+      success: boolean; 
+      data: {
+        totalOrders: number;
+        totalRevenue: number;
+        averageOrderValue: number;
+        ordersByStatus: Record<string, number>;
+        ordersByPaymentStatus: Record<string, number>;
+        revenueByPeriod?: Array<{ period: string; revenue: number; orders: number }>;
+      }
+    }>(`/orders/statistics${query ? `?${query}` : ''}`)
+  },
+
+  // Search orders
+  searchOrders: (query: string, params?: { 
+    store?: string; 
+    status?: string; 
+    paymentStatus?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const queryParams = new URLSearchParams({ search: query })
+    if (params?.store) queryParams.append('store', params.store)
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.paymentStatus) queryParams.append('paymentStatus', params.paymentStatus)
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    
+    return apiClient.get<{ 
+      success: boolean; 
+      count: number; 
+      data: Order[] 
+    }>(`/orders/search?${queryParams.toString()}`)
+  },
+
+  // Export orders (admin only)
+  exportOrders: (params?: {
+    format?: 'csv' | 'excel';
+    store?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.format) queryParams.append('format', params.format)
+    if (params?.store) queryParams.append('store', params.store)
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.startDate) queryParams.append('startDate', params.startDate)
+    if (params?.endDate) queryParams.append('endDate', params.endDate)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{ success: boolean; downloadUrl: string }>(`/orders/export${query ? `?${query}` : ''}`)
+  },
 }

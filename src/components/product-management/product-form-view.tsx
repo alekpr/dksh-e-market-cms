@@ -47,10 +47,11 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
   const handleFieldChange = (field: string, value: any) => {
     if (field.startsWith('description.')) {
       const descField = field.replace('description.', '')
+      const currentDescription = formData.description || { short: '', detailed: '' }
       onFormDataChange({
         ...formData,
         description: {
-          ...formData.description,
+          ...currentDescription,
           [descField]: value
         }
       })
@@ -134,7 +135,9 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
     updatedImages[index] = value
     onFormDataChange({
       ...formData,
-      images: updatedImages.filter(img => img.trim() !== '')
+      images: updatedImages.filter(img => 
+        typeof img === 'string' ? img.trim() !== '' : img && ((img as any).url || (img as any).src)
+      )
     })
   }
 
@@ -249,7 +252,7 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                   <Label htmlFor="short-description">Short Description *</Label>
                   <Input
                     id="short-description"
-                    value={formData.description.short}
+                    value={formData.description?.short || ''}
                     onChange={(e) => handleFieldChange('description.short', e.target.value)}
                     placeholder="Brief product description"
                     required
@@ -260,7 +263,7 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                   <Label htmlFor="detailed-description">Detailed Description</Label>
                   <Textarea
                     id="detailed-description"
-                    value={formData.description.detailed}
+                    value={formData.description?.detailed || ''}
                     onChange={(e) => handleFieldChange('description.detailed', e.target.value)}
                     placeholder="Detailed product description"
                     rows={4}
@@ -560,7 +563,7 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
       </Card>
 
       {/* Preview Card */}
-      {(formData.name || formData.description.short) && (
+      {(formData.name || formData.description?.short) && (
         <Card>
           <CardHeader>
             <CardTitle>Preview</CardTitle>
@@ -584,7 +587,7 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                 )}
                 <div className="flex-1">
                   <h3 className="font-semibold">{formData.name || 'Product Name'}</h3>
-                  {formData.description.short && (
+                  {formData.description?.short && (
                     <p className="text-sm text-muted-foreground">{formData.description.short}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1">
@@ -619,7 +622,9 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                 <span className="mx-2">•</span>
                 <span>Total Stock: {formData.variants.reduce((sum, v) => sum + v.inventory.quantity, 0)}</span>
                 <span className="mx-2">•</span>
-                <span>Images: {formData.images.filter(img => img.trim()).length}</span>
+                <span>Images: {formData.images.filter(img => 
+                  typeof img === 'string' ? img.trim() : img && ((img as any).url || (img as any).src)
+                ).length}</span>
               </div>
             </div>
           </CardContent>

@@ -10,6 +10,7 @@ import StoresPage from "@/app/stores/page"
 import ProductsPage from "@/app/products/page"
 import UsersPage from "@/app/users/page"
 import CategoriesPage from "@/app/categories/page"
+import OrdersPage from "@/app/orders/page"
 import InventoryManagementPage from "@/app/inventory-management/page"
 import LoginPage from "@/app/login/page"
 import UnauthorizedPage from "@/app/unauthorized/page"
@@ -85,7 +86,7 @@ function App() {
             } />
             <Route path="/orders" element={
               <RoleGuard requiredPermission="orders">
-                <div>Orders Page - Coming Soon</div>
+                <OrdersPage />
               </RoleGuard>
             } />
             <Route path="/inventory" element={
