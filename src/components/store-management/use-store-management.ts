@@ -22,8 +22,14 @@ export interface StoreFormData {
 
 // Simple toast replacement - you can implement proper toast later
 const toast = {
-  success: (message: string) => console.log('✅', message),
-  error: (message: string) => console.error('❌', message)
+  success: (message: string) => {
+    console.log('✅', message)
+    alert(`✅ ${message}`) // Make the message visible to the user
+  },
+  error: (message: string) => {
+    console.error('❌', message)
+    alert(`❌ ${message}`) // Make the error visible to the user
+  }
 }
 
 export const useStoreManagement = () => {
@@ -241,16 +247,24 @@ export const useStoreManagement = () => {
   // Handle delete store
   const handleDelete = async (id: string) => {
     try {
+      // Confirm deletion with the user
+      if (!window.confirm('Are you sure you want to delete this store? This action cannot be undone.')) {
+        return;
+      }
+      
+      console.log('Attempting to delete store with ID:', id)
       const response = await storeApi.deleteStore(id)
-      if (response.status === 'success') {
-        toast.success('Store deleted successfully')
+      console.log('Delete store response:', response)
+      
+      if (response.success === true) {
+        toast.success(response.message || 'Store deleted successfully')
         fetchStores() // Refresh the list
       } else {
         toast.error(response.message || 'Failed to delete store')
       }
     } catch (error: any) {
       console.error('Failed to delete store:', error)
-      toast.error('Failed to delete store. Please try again.')
+      toast.error(`Failed to delete store: ${error.message || 'Unknown error'}`)
     }
   }
 

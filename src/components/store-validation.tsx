@@ -27,18 +27,55 @@ export function StoreValidation({ showStoreInfo = true, className }: StoreValida
 
   // Show store validation status
   if (!hasValidStore) {
+    // Check if store is still being loaded but merchantInfo exists
+    const isStoreLoading = !userStore && user.merchantInfo?.storeId;
+    const isLoadingOrLoaded = isStoreLoading || !!userStore;
+    
     return (
       <div className={className}>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Store Access Required</AlertTitle>
+        <Alert variant={isStoreLoading ? "default" : "destructive"}>
+          {isStoreLoading ? (
+            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          <AlertTitle>
+            {isStoreLoading ? "Loading Store..." : "Store Access Required"}
+          </AlertTitle>
           <AlertDescription>
             {!user.merchantInfo?.storeId ? (
               'No store is associated with your account. Please contact support to set up your store.'
             ) : !userStore ? (
-              'Unable to load your store information. Please try refreshing the page.'
+              <div className="space-y-2">
+                <div className="text-sm">
+                  <span className="font-medium">Store ID:</span> {user.merchantInfo.storeId}
+                </div>
+                <div className="text-sm">
+                  <span className="font-medium">Store Name:</span> {user.merchantInfo.storeName || 'Not set'}
+                </div>
+                {isStoreLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin h-3 w-3 border-2 border-primary border-t-transparent rounded-full" />
+                    <span>Loading your store information, please wait...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-red-500">
+                    <AlertCircle className="h-3 w-3" />
+                    <span>Unable to load your store information. Please try refreshing the page.</span>
+                  </div>
+                )}
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="text-sm text-blue-600 hover:underline mt-2"
+                >
+                  Refresh Page
+                </button>
+              </div>
             ) : userStore.status !== 'active' ? (
-              `Your store is currently ${userStore.status}. Please contact support to activate your store.`
+              <div className="space-y-2">
+                <div>Your store status is currently <strong>{userStore.status}</strong>.</div>
+                <div>Please contact support to activate your store.</div>
+              </div>
             ) : (
               'Store validation failed. Please contact support.'
             )}

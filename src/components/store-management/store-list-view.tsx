@@ -28,6 +28,7 @@ const storeStatusConfig = {
   active: { label: 'Active', variant: 'default' as const },
   suspended: { label: 'Suspended', variant: 'destructive' as const },
   inactive: { label: 'Inactive', variant: 'outline' as const },
+  closed: { label: 'Closed', variant: 'outline' as const },
 }
 
 export const StoreListView: React.FC<StoreListViewProps> = ({
@@ -61,7 +62,8 @@ export const StoreListView: React.FC<StoreListViewProps> = ({
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status") as Store['status']
-        const config = storeStatusConfig[status]
+        // Add fallback for unknown status values
+        const config = storeStatusConfig[status] || { label: status || 'Unknown', variant: 'outline' as const }
         return (
           <Badge variant={config.variant}>
             {config.label}
@@ -149,7 +151,10 @@ export const StoreListView: React.FC<StoreListViewProps> = ({
                 Edit Store
               </DropdownMenuItem>
               <DropdownMenuItem 
-                onClick={() => onDelete(store)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(store);
+                }}
                 className="text-destructive"
               >
                 <Trash className="mr-2 h-4 w-4" />

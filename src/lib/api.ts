@@ -208,7 +208,7 @@ export interface Store {
     daysSinceRegistration: number | null;
     id: string;
   };
-  status: 'pending' | 'active' | 'suspended' | 'inactive';
+  status: 'pending' | 'active' | 'suspended' | 'inactive' | 'closed';
   commission?: {
     rate: number;
     feeStructure: string;
@@ -256,7 +256,7 @@ export interface Product {
   };
   categories: Category[] | string[];
   store: Store | string;
-  status: 'draft' | 'pending' | 'active' | 'inactive' | 'deleted';
+  status: 'draft' | 'active' | 'archived' | 'deleted';
   featured: boolean;
   images: string[];
   hasVariants: boolean;
@@ -307,6 +307,8 @@ export interface ProductFilters {
   featured?: boolean;
   sort?: string;
   order?: 'asc' | 'desc';
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 // Category API Types
@@ -493,6 +495,9 @@ class ApiClient {
     const token = tokenStorage.getAccessToken()
     if (token) {
       headers.Authorization = `Bearer ${token}`
+      console.log(`Request to ${endpoint} with token: ${token.substring(0, 15)}...`);
+    } else {
+      console.warn(`Request to ${endpoint} without auth token!`);
     }
 
     try {
@@ -524,19 +529,25 @@ class ApiClient {
 
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type')
+    const url = response.url.replace(this.baseURL, '');
+    
+    console.log(`API Response from ${url}: status=${response.status}, contentType=${contentType}`);
     
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json()
       
       if (!response.ok) {
-        // Include status code in error message for better debugging
-        const errorMessage = data.message || `HTTP error! status: ${response.status}`
+        // Extract detailed error message if available
+        const errorMessage = data.message || data.error || `HTTP error! status: ${response.status}`
+        console.error('API Error Response:', data)
         const error = new Error(errorMessage)
-        // Add response status to error for better handling
+        // Add response status and data to error for better handling
         ;(error as any).status = response.status
+        ;(error as any).data = data
         throw error
       }
       
+      console.log(`API Success Response from ${url}:`, data);
       return data
     } else {
       if (!response.ok) {
@@ -732,8 +743,19 @@ export const storeApi = {
   },
 
   // Get a specific store by ID
-  getStore: (id: string) => 
-    apiClient.get<{ data: Store }>(`/stores/${id}`),
+  getStore: async (id: string) => {
+    try {
+      return await apiClient.get<Store>(`/stores/${id}`)
+    } catch (error: any) {
+      console.error(`Error in getStore(${id}):`, error);
+      console.error('Error details:', {
+        status: error?.status,
+        message: error?.message,
+        data: error?.data
+      });
+      throw error;
+    }
+  },
 
   // Create a new store
   createStore: (data: CreateStoreRequest) =>
@@ -764,8 +786,19 @@ export const storeApi = {
     apiClient.get<{ count: number; data: Store[] }>(`/stores/search?query=${encodeURIComponent(query)}`),
 
   // Get current user's store (for merchants)
-  getCurrentUserStore: () =>
-    apiClient.get<{ success: boolean; data: Store }>('/stores/my-store'),
+  getCurrentUserStore: async () => {
+    try {
+      return await apiClient.get<Store>('/stores/my-store')
+    } catch (error: any) {
+      console.error('Error in getCurrentUserStore:', error);
+      console.error('Error details:', {
+        status: error?.status,
+        message: error?.message,
+        data: error?.data
+      });
+      throw error;
+    }
+  },
 
   // Verify store access for merchant
   verifyStoreAccess: (storeId: string) =>
@@ -785,8 +818,11 @@ export const productApi = {
     if (params?.minPrice) queryParams.append('minPrice', params.minPrice.toString())
     if (params?.maxPrice) queryParams.append('maxPrice', params.maxPrice.toString())
     if (params?.featured !== undefined) queryParams.append('featured', params.featured.toString())
-    if (params?.sort) queryParams.append('sort', params.sort)
-    if (params?.order) queryParams.append('order', params.order)
+    // Support both old (sort/order) and new (sortBy/sortOrder) parameters
+    if (params?.sort) queryParams.append('sortBy', params.sort)
+    if (params?.order) queryParams.append('sortOrder', params.order)
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
+    if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
     
     const query = queryParams.toString()
     return apiClient.get<{ data: Product[]; pagination?: any; count?: number }>(`/products${query ? `?${query}` : ''}`)
@@ -802,11 +838,11 @@ export const productApi = {
 
   // Update a product
   updateProduct: (id: string, data: UpdateProductRequest) =>
-    apiClient.patch<{ data: Product }>(`/products/${id}`, data),
+    apiClient.put<{ data: Product }>(`/products/${id}`, data),
 
   // Update product status
   updateProductStatus: (id: string, status: Product['status']) =>
-    apiClient.patch<{ data: Product }>(`/products/${id}/status`, { status }),
+    apiClient.put<{ data: Product }>(`/products/${id}/status`, { status }),
 
   // Update product inventory
   updateProductInventory: (id: string, variantId: string, quantity: number) =>
