@@ -30,17 +30,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { 
-  Eye, 
-  MoreHorizontal, 
-  Search,
-  Filter,
-  RefreshCw,
-  Package,
-  Clock,
-  Truck,
+import {
+  ArrowUpDown,
   CheckCircle2,
+  Clock,
+  Eye,
+  Filter,
+  MoreHorizontal,
+  Package,
+  RefreshCw,
+  Search,
+  Truck,
   XCircle,
+  RotateCcw,
   AlertCircle
 } from 'lucide-react'
 import { type Order } from '@/lib/api'
@@ -181,7 +183,7 @@ export function OrderListView({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -202,6 +204,18 @@ export function OrderListView({
                 <p className="text-2xl font-bold text-yellow-600">{orderStats.pending}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Confirmed</p>
+                <p className="text-2xl font-bold text-blue-600">{orderStats.confirmed}</p>
+              </div>
+              <CheckCircle2 className="w-8 h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
@@ -250,6 +264,18 @@ export function OrderListView({
                 <p className="text-2xl font-bold text-red-600">{orderStats.cancelled}</p>
               </div>
               <XCircle className="w-8 h-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Refunded</p>
+                <p className="text-2xl font-bold text-gray-600">{orderStats.refunded}</p>
+              </div>
+              <RotateCcw className="w-8 h-8 text-gray-600" />
             </div>
           </CardContent>
         </Card>

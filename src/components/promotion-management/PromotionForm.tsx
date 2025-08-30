@@ -2,7 +2,8 @@
  * Promotion Form Component
  * Comprehensive form for creating and editing promotions
  */
-import { useState, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -624,3 +625,21 @@ export function PromotionForm({ promotion, onSubmit, onCancel, loading = false }
           </Card>
 
           {/* Continue in next part... */}
+
+          <div className="flex justify-end space-x-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => window.history.back()}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : 'Save Promotion'}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  )
+}

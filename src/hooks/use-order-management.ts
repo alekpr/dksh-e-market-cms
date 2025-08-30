@@ -9,10 +9,12 @@ export type OrderView = 'list' | 'view'
 export interface OrderStats {
   total: number
   pending: number
+  confirmed: number
   processing: number
   shipped: number
   delivered: number
   cancelled: number
+  refunded: number
 }
 
 export function useOrderManagement() {
@@ -44,10 +46,12 @@ export function useOrderManagement() {
   const [orderStats, setOrderStats] = useState<OrderStats>({
     total: 0,
     pending: 0,
+    confirmed: 0,
     processing: 0,
     shipped: 0,
     delivered: 0,
-    cancelled: 0
+    cancelled: 0,
+    refunded: 0
   })
 
   // User permissions
@@ -73,7 +77,7 @@ export function useOrderManagement() {
   const buildFilters = useCallback((): OrderFilters => {
     const filters: OrderFilters = {
       page: currentPage,
-      limit: 10,
+      limit: 20, // Reasonable limit for better UX with pagination
       sortBy,
       sortOrder
     }
@@ -113,6 +117,78 @@ export function useOrderManagement() {
     navigate({ search: params.toString() }, { replace: true })
   }, [currentView, searchTerm, filterStatus, filterPaymentStatus, sortBy, sortOrder, currentPage, navigate])
 
+  // Load all orders for statistics calculation
+  const loadAllOrdersForStats = useCallback(async () => {
+    try {
+      // Get all orders without pagination for statistics
+      const statsFilters: any = {
+        limit: 1000, // Large limit to get all orders
+        page: 1,
+        sortBy: 'createdAt',
+        sortOrder: 'desc' as const
+        // Don't include search, status, or payment status filters for stats
+      }
+
+      // Add store filter for merchants
+      if (isMerchant && user?.merchantInfo?.storeId) {
+        statsFilters.store = user.merchantInfo.storeId
+      }
+
+      const statsResponse = isMerchant && user?.merchantInfo?.storeId 
+        ? await orderApi.getStoreOrders(user.merchantInfo.storeId, statsFilters)
+        : await orderApi.getOrders(statsFilters)
+
+      if (statsResponse.success && statsResponse.data) {
+        const allOrdersData = Array.isArray(statsResponse.data) ? statsResponse.data : (statsResponse.data as any).data || []
+        
+        // Calculate statistics from all orders
+        const stats: OrderStats = {
+          total: allOrdersData.length,
+          pending: 0,
+          confirmed: 0,
+          processing: 0,
+          shipped: 0,
+          delivered: 0,
+          cancelled: 0,
+          refunded: 0
+        }
+
+        allOrdersData.forEach((order: Order) => {
+          switch (order.status) {
+            case 'pending':
+              stats.pending++
+              break
+            case 'confirmed':
+              stats.confirmed++
+              break
+            case 'processing':
+              stats.processing++
+              break
+            case 'shipped':
+              stats.shipped++
+              break
+            case 'delivered':
+              stats.delivered++
+              break
+            case 'cancelled':
+              stats.cancelled++
+              break
+            case 'refunded':
+              stats.refunded++
+              break
+          }
+        })
+
+        setOrderStats(stats)
+        setTotalOrders(allOrdersData.length)
+        setTotalPages(Math.ceil(allOrdersData.length / 20))
+      }
+    } catch (err: any) {
+      console.error('Error loading stats:', err)
+      // Don't show error for stats loading failure
+    }
+  }, [isMerchant, user?.merchantInfo?.storeId])
+
   // Load orders
   const loadOrders = useCallback(async () => {
     if (!canManageOrders) {
@@ -149,40 +225,12 @@ export function useOrderManagement() {
         
         if (ordersCount !== undefined) {
           setTotalOrders(ordersCount)
-          setTotalPages(Math.ceil(ordersCount / 10))
+          setTotalPages(Math.ceil(ordersCount / 20))
         }
 
-        // Calculate statistics
-        const stats: OrderStats = {
-          total: ordersCount || 0,
-          pending: 0,
-          processing: 0,
-          shipped: 0,
-          delivered: 0,
-          cancelled: 0
-        }
-
-        ordersData?.forEach((order: Order) => {
-          switch (order.status) {
-            case 'pending':
-              stats.pending++
-              break
-            case 'processing':
-              stats.processing++
-              break
-            case 'shipped':
-              stats.shipped++
-              break
-            case 'delivered':
-              stats.delivered++
-              break
-            case 'cancelled':
-              stats.cancelled++
-              break
-          }
-        })
-
-        setOrderStats(stats)
+        // Calculate statistics from ALL orders (not filtered)
+        // We need to fetch all orders for accurate statistics
+        await loadAllOrdersForStats()
       }
     } catch (err: any) {
       console.error('Error loading orders:', err)

@@ -37,10 +37,12 @@ export default function OrdersPage() {
     orderStats = {
       total: 0,
       pending: 0,
+      confirmed: 0,
       processing: 0,
       shipped: 0,
       delivered: 0,
-      cancelled: 0
+      cancelled: 0,
+      refunded: 0
     },
     canManageOrders = true,
     isAdmin = false,

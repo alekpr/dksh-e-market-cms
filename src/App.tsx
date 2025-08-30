@@ -14,6 +14,7 @@ import AdminHierarchicalCategoriesPage from "@/app/admin/categories/hierarchical
 import OrdersPage from "@/app/orders/page"
 import PromotionsPage from "@/app/promotions/page"
 import InventoryManagementPage from "@/app/inventory-management/page"
+import AnalyticsPage from "@/app/analytics/page"
 import LoginPage from "@/app/login/page"
 import UnauthorizedPage from "@/app/unauthorized/page"
 
@@ -103,7 +104,7 @@ function App() {
             } />
             <Route path="/analytics" element={
               <RoleGuard requiredPermission="analytics">
-                <div>Analytics Page - Coming Soon</div>
+                <AnalyticsPage />
               </RoleGuard>
             } />
             <Route path="/settings" element={

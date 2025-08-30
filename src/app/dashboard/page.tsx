@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
@@ -19,112 +21,228 @@ import {
   Percent,
   BarChart3,
   TrendingUp,
-  Activity
+  Activity,
+  DollarSign,
+  ShoppingCart,
+  AlertTriangle,
+  PackageX
 } from "lucide-react"
 import { DebugPanel } from '@/components/debug-panel'
 
+interface MerchantStats {
+  totalRevenue: number
+  totalOrders: number
+  totalProducts: number
+  activePromotions: number
+  lowStockProducts: number
+  outOfStockProducts: number
+  averageOrderValue: number
+  totalProductsSold: number
+}
+
+interface RecentOrder {
+  _id: string
+  totalAmount: number
+  status: string
+  createdAt: string
+  customerName?: string
+  items: any[]
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
-  const [stats, setStats] = useState({
-    stores: 0,
-    users: 0,
-    products: 0,
-    categories: 0,
-    promotions: 0,
-    orders: 0
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<MerchantStats>({
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalProducts: 0,
+    activePromotions: 0,
+    lowStockProducts: 0,
+    outOfStockProducts: 0,
+    averageOrderValue: 0,
+    totalProductsSold: 0
   })
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
 
   const userRole = user?.role as UserRole
   const roleDescription = userRole ? ROLE_DESCRIPTIONS[userRole] : null
   const userPermissions = userRole ? NAVIGATION_PERMISSIONS[userRole] : []
   const canManageStores = (userPermissions as string[]).includes('stores')
   const canManageUsers = (userPermissions as string[]).includes('users')
+  const isMerchant = userRole === 'merchant'
+  const isAdmin = userRole === 'admin'
 
   useEffect(() => {
-    // Simulate API call to fetch stats
-    const fetchStats = async () => {
-      // Mock data based on role
-      setStats({
-        stores: canManageStores ? 25 : 1,
-        users: canManageUsers ? 1250 : 15,
-        products: 450,
-        categories: 28,
-        promotions: 12,
-        orders: 156
-      })
+    const fetchMerchantData = async () => {
+      if (!isMerchant) {
+        // For admin, use mock data as before
+        setStats({
+          totalRevenue: 0,
+          totalOrders: 156,
+          totalProducts: 450,
+          activePromotions: 12,
+          lowStockProducts: 0,
+          outOfStockProducts: 0,
+          averageOrderValue: 0,
+          totalProductsSold: 0
+        })
+        setLoading(false)
+        return
+      }
+
+      try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('token') || localStorage.getItem('authToken')
+        
+        if (!token) {
+          setLoading(false)
+          return
+        }
+
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+
+        // Fetch multiple endpoints in parallel
+        const [summaryRes, inventoryRes, productsRes, promotionsRes, ordersRes] = await Promise.all([
+          fetch('http://localhost:3000/api/v1/analytics/merchant/summary', { headers }),
+          fetch('http://localhost:3000/api/v1/analytics/merchant/inventory', { headers }),
+          fetch(`http://localhost:3000/api/v1/products?store=${user?.merchantInfo?.storeId}&status=active&limit=1`, { headers }),
+          fetch('http://localhost:3000/api/v1/promotions?limit=1', { headers }),
+          fetch(`http://localhost:3000/api/v1/stores/${user?.merchantInfo?.storeId}/orders?limit=5&sortBy=createdAt&sortOrder=desc`, { headers })
+        ])
+
+        const [summaryData, inventoryData, productsData, promotionsData, ordersData] = await Promise.all([
+          summaryRes.json(),
+          inventoryRes.json(),
+          productsRes.json(),
+          promotionsRes.json(),
+          ordersRes.json()
+        ])
+
+        console.log('Dashboard API Data:', { summaryData, inventoryData, productsData, promotionsData, ordersData })
+
+        // Extract stats from API responses
+        const summary = summaryData.data?.summary || {}
+        const inventory = inventoryData.data?.stockLevels?.[0] || {}
+        
+        setStats({
+          totalRevenue: summary.totalRevenue || 0,
+          totalOrders: summary.totalOrders || 0,
+          totalProducts: productsData.pagination?.total || 0,
+          activePromotions: promotionsData.pagination?.total || 0,
+          lowStockProducts: inventory.lowStockProducts || 0,
+          outOfStockProducts: inventory.outOfStockProducts || 0,
+          averageOrderValue: summary.averageOrderValue || 0,
+          totalProductsSold: summary.totalProductsSold || 0
+        })
+
+        // Set recent orders
+        setRecentOrders(ordersData.data || [])
+
+      } catch (error) {
+        console.error('Error fetching merchant data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    fetchStats()
-  }, [canManageStores, canManageUsers])
+    fetchMerchantData()
+  }, [isMerchant, user?.merchantInfo?.storeId])
 
   const getDashboardCards = () => {
     const cards = []
 
-    if (userRole === 'admin') {
+    if (isAdmin) {
       cards.push(
         {
           title: "Total Stores",
-          value: stats.stores,
+          value: 25,
           description: "Active merchant stores",
           icon: Store,
           color: "text-blue-600"
         },
         {
           title: "Total Users", 
-          value: stats.users,
+          value: 1250,
           description: "All system users",
           icon: Users,
           color: "text-green-600"
         }
       )
-    } else if (userRole === 'merchant') {
+    } else if (isMerchant) {
       cards.push(
         {
+          title: "Total Revenue",
+          value: `฿${stats.totalRevenue.toLocaleString()}`,
+          description: "This month",
+          icon: DollarSign,
+          color: "text-green-600"
+        },
+        {
+          title: "Total Orders",
+          value: stats.totalOrders,
+          description: "All completed orders",
+          icon: ShoppingCart,
+          color: "text-blue-600"
+        },
+        {
           title: "Products",
-          value: stats.products,
-          description: "Items in your store",
+          value: stats.totalProducts,
+          description: "Active products",
           icon: Package,
           color: "text-purple-600"
         },
         {
-          title: "Categories",
-          value: stats.categories,
-          description: "Product categories",
-          icon: Tag,
-          color: "text-orange-600"
-        },
-        {
           title: "Active Promotions",
-          value: stats.promotions,
+          value: stats.activePromotions,
           description: "Running campaigns",
           icon: Percent,
           color: "text-red-600"
         },
         {
-          title: "Orders",
-          value: stats.orders,
-          description: "This month",
-          icon: BarChart3,
+          title: "Average Order",
+          value: `฿${Math.round(stats.averageOrderValue).toLocaleString()}`,
+          description: "Per order value",
+          icon: TrendingUp,
           color: "text-teal-600"
+        },
+        {
+          title: "Products Sold",
+          value: stats.totalProductsSold,
+          description: "Total quantity sold",
+          icon: BarChart3,
+          color: "text-orange-600"
         }
       )
+
+      // Add inventory alerts if needed
+      if (stats.lowStockProducts > 0 || stats.outOfStockProducts > 0) {
+        cards.push({
+          title: "Inventory Alerts",
+          value: stats.lowStockProducts + stats.outOfStockProducts,
+          description: `${stats.outOfStockProducts} out of stock, ${stats.lowStockProducts} low stock`,
+          icon: AlertTriangle,
+          color: "text-yellow-600"
+        })
+      }
     }
 
     return cards
   }
 
   const getWelcomeMessage = () => {
-    if (userRole === 'admin') {
+    if (isAdmin) {
       return {
         title: `Welcome back, ${user?.name}!`,
         subtitle: "System Administrator Dashboard",
         description: "Manage stores and users across the entire platform"
       }
-    } else if (userRole === 'merchant') {
+    } else if (isMerchant) {
       return {
         title: `Welcome to your store, ${user?.name}!`,
-        subtitle: "Merchant Dashboard", 
-        description: "Manage your products, categories, and promotions"
+        subtitle: `${user?.merchantInfo?.storeName || 'Your Store'} Dashboard`, 
+        description: "Monitor your business performance and manage your operations"
       }
     }
     
@@ -133,6 +251,39 @@ export default function DashboardPage() {
       subtitle: "Dashboard",
       description: "Your account overview"
     }
+  }
+
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="hidden md:block">
+                    <BreadcrumbLink href="/dashboard">
+                      Dashboard
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p>Loading dashboard...</p>
+              </div>
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    )
   }
 
   const dashboardCards = getDashboardCards()
@@ -164,7 +315,7 @@ export default function DashboardPage() {
               <h1 className="text-3xl font-bold tracking-tight">{welcomeMsg.title}</h1>
               <div className="flex items-center gap-2">
                 <p className="text-muted-foreground">{welcomeMsg.description}</p>
-                {roleDescription && (
+                {roleDescription && !isMerchant && (
                   <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                     {roleDescription.name}
                   </span>
@@ -172,8 +323,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Role Information */}
-            {roleDescription && (
+            {/* Show role permissions only for non-merchant users */}
+            {roleDescription && !isMerchant && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -199,7 +350,7 @@ export default function DashboardPage() {
 
             {/* Stats Cards */}
             {dashboardCards.length > 0 && (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {dashboardCards.map((card, index) => (
                   <Card key={index}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -219,60 +370,83 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Recent Activity
-                </CardTitle>
-                <CardDescription>
-                  {userRole === 'admin' 
-                    ? "System-wide activity overview"
-                    : "Your store activity"
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {userRole === 'admin' ? (
-                    <>
-                      <div className="flex items-center gap-3 p-3 border rounded-lg">
-                        <Store className="h-4 w-4 text-blue-600" />
+            {/* Recent Activity for Merchants */}
+            {isMerchant && recentOrders.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" />
+                    Recent Orders
+                  </CardTitle>
+                  <CardDescription>
+                    Latest orders from your store
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentOrders.slice(0, 5).map((order) => (
+                      <div key={order._id} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <ShoppingCart className={`h-4 w-4 ${
+                          order.status === 'completed' ? 'text-green-600' :
+                          order.status === 'pending' ? 'text-yellow-600' :
+                          order.status === 'cancelled' ? 'text-red-600' :
+                          'text-blue-600'
+                        }`} />
                         <div className="flex-1">
-                          <p className="text-sm font-medium">New store registered</p>
-                          <p className="text-xs text-muted-foreground">TechMart added 2 hours ago</p>
+                          <p className="text-sm font-medium">
+                            Order #{order._id.slice(-8)} - ฿{order.totalAmount.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {order.status} • {new Date(order.createdAt).toLocaleDateString()} • {order.items?.length || 0} items
+                          </p>
                         </div>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {order.status}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-3 p-3 border rounded-lg">
-                        <Users className="h-4 w-4 text-green-600" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">User accounts updated</p>
-                          <p className="text-xs text-muted-foreground">5 new merchants this week</p>
-                        </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Recent Activity for Admin */}
+            {isAdmin && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Recent Activity
+                  </CardTitle>
+                  <CardDescription>
+                    System-wide activity overview
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 border rounded-lg">
+                      <Store className="h-4 w-4 text-blue-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">New store registered</p>
+                        <p className="text-xs text-muted-foreground">TechMart added 2 hours ago</p>
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-3 p-3 border rounded-lg">
-                        <Package className="h-4 w-4 text-purple-600" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">New products added</p>
-                          <p className="text-xs text-muted-foreground">3 products added today</p>
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 border rounded-lg">
+                      <Users className="h-4 w-4 text-green-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">User accounts updated</p>
+                        <p className="text-xs text-muted-foreground">5 new merchants this week</p>
                       </div>
-                      <div className="flex items-center gap-3 p-3 border rounded-lg">
-                        <BarChart3 className="h-4 w-4 text-teal-600" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">Orders received</p>
-                          <p className="text-xs text-muted-foreground">12 new orders this week</p>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </SidebarInset>

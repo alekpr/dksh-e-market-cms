@@ -18,8 +18,7 @@ export const NAVIGATION_PERMISSIONS = {
     'stores',      // Store Management - เฉพาะ Admin
     'users',       // User Management - เฉพาะ Admin
     'categories-admin', // Hierarchical Category Management - เฉพาะ Admin
-    'orders',      // Order Management - Admin ดูได้ทั้งหมด
-    'analytics'    // Analytics - Admin ดูได้ทั้งหมด
+    'analytics'    // Analytics - Admin สามารถดูได้ทั้งระบบ
   ],
   [USER_ROLES.MERCHANT]: [
     'dashboard',
@@ -28,8 +27,7 @@ export const NAVIGATION_PERMISSIONS = {
     'promotions',  // Promotion Management - เฉพาะ Merchant
     'orders',      // Order Management - เฉพาะ Merchant
     'inventory',   // Inventory Management - เฉพาะ Merchant
-    'analytics',   // Analytics - เฉพาะ Merchant
-    'settings'     // Store Settings - เฉพาะ Merchant
+    'analytics'    // Analytics - เฉพาะ Merchant
   ],
   [USER_ROLES.CUSTOMER]: [] // Customer ไม่สามารถเข้า CMS ได้
 } as const;
@@ -42,7 +40,6 @@ export const ROLE_DESCRIPTIONS = {
     permissions: [
       'Manage all stores',
       'Manage users and roles',
-      'View system analytics',
       'Configure system settings'
     ]
   },
@@ -55,8 +52,7 @@ export const ROLE_DESCRIPTIONS = {
       'Create and manage promotions',
       'Process orders',
       'Manage inventory',
-      'View store analytics',
-      'Configure store settings'
+      'View store analytics'
     ]
   },
   [USER_ROLES.CUSTOMER]: {
