@@ -17,13 +17,14 @@ export const NAVIGATION_PERMISSIONS = {
     'dashboard',
     'stores',      // Store Management - เฉพาะ Admin
     'users',       // User Management - เฉพาะ Admin
+    'categories-admin', // Hierarchical Category Management - เฉพาะ Admin
     'orders',      // Order Management - Admin ดูได้ทั้งหมด
     'analytics'    // Analytics - Admin ดูได้ทั้งหมด
   ],
   [USER_ROLES.MERCHANT]: [
     'dashboard',
     'products',    // Product Management - เฉพาะ Merchant
-    'categories',  // Category Management - เฉพาะ Merchant
+    'categories',  // Store Category Management - เฉพาะ Merchant
     'promotions',  // Promotion Management - เฉพาะ Merchant
     'orders',      // Order Management - เฉพาะ Merchant
     'inventory',   // Inventory Management - เฉพาะ Merchant
@@ -111,9 +112,14 @@ export const NAVIGATION_CONFIG = {
     path: '/products'
   },
   categories: {
-    title: 'Category Management',
+    title: 'Store Categories',
     icon: 'categories',
     path: '/categories'
+  },
+  'categories-admin': {
+    title: 'Category System',
+    icon: 'categories',
+    path: '/admin/categories/hierarchical'
   },
   promotions: {
     title: 'Promotion Management',

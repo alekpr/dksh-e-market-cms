@@ -324,7 +324,9 @@ export interface Category {
   image?: string;
   icon?: string;
   isActive: boolean;
+  isMaster?: boolean; // New field for hierarchical categories
   order: number;
+  store?: Store | string; // Store reference (null for master categories)
   meta?: {
     title?: string;
     description?: string;
@@ -341,6 +343,27 @@ export interface Category {
   path?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Hierarchical Category API Types
+export interface HierarchicalCategory {
+  masterCategory: {
+    _id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    image?: string;
+    icon?: string;
+    order: number;
+  };
+  storeCount: number;
+  totalProductCount: number;
+  stores: Array<{
+    storeId: string;
+    storeName: string;
+    storeSlug: string;
+    categories: Category[];
+  }>;
 }
 
 // Order API Types
@@ -474,6 +497,182 @@ export interface OrderFilters {
   search?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+}
+
+// Promotion Types
+export interface PromotionRule {
+  type: 'minimum_purchase' | 'product_category' | 'user_role' | 'store_specific' | 'quantity_based';
+  value: any;
+  operator: 'equals' | 'greater_than' | 'less_than' | 'in' | 'not_in';
+}
+
+export interface PromotionDiscount {
+  type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'free_shipping';
+  value?: number;
+  maxDiscount?: number;
+  buyQuantity?: number;
+  getQuantity?: number;
+  getDiscountType?: 'percentage' | 'fixed_amount' | 'free';
+  getDiscountValue?: number;
+}
+
+export interface PromotionApplicableItem {
+  itemType: 'product' | 'category' | 'store' | 'all';
+  itemId?: string;
+  includeVariants?: boolean;
+}
+
+export interface PromotionBanner {
+  image?: string;
+  link?: string;
+  position: 'header' | 'home_slider' | 'category_top' | 'product_detail' | 'footer';
+  displayOrder: number;
+}
+
+export interface PromotionFeaturedProducts {
+  productIds: string[];
+  maxProducts: number;
+  autoSelect: boolean;
+  selectionCriteria: 'best_selling' | 'highest_rated' | 'newest' | 'random' | 'manual';
+}
+
+export interface PromotionFlashSale {
+  originalPrice?: number;
+  salePrice?: number;
+  availableQuantity?: number;
+  soldQuantity: number;
+  notifyBeforeStart: number;
+  showCountdown: boolean;
+}
+
+export interface PromotionTargeting {
+  userRoles?: string[];
+  stores?: string[];
+  categories?: string[];
+  locations?: string[];
+  newUsersOnly: boolean;
+  minimumOrderValue?: number;
+}
+
+export interface PromotionAnalytics {
+  views: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+}
+
+export interface PromotionUsageLimit {
+  total?: number;
+  perUser?: number;
+  perDay?: number;
+}
+
+export interface PromotionCurrentUsage {
+  total: number;
+  today: number;
+  lastResetDate: string;
+}
+
+export interface Promotion {
+  _id: string;
+  title: string;
+  description?: string;
+  type: 'featured_products' | 'flash_sale' | 'promotional_banner' | 'discount_coupon' | 'buy_x_get_y' | 'free_shipping';
+  status: 'draft' | 'scheduled' | 'active' | 'paused' | 'expired' | 'cancelled';
+  priority: number;
+  startDate: string;
+  endDate: string;
+  discount?: PromotionDiscount;
+  applicableItems?: PromotionApplicableItem[];
+  rules?: PromotionRule[];
+  usageLimit?: PromotionUsageLimit;
+  currentUsage: PromotionCurrentUsage;
+  banner?: PromotionBanner;
+  featuredProducts?: PromotionFeaturedProducts;
+  flashSale?: PromotionFlashSale;
+  targeting?: PromotionTargeting;
+  analytics: PromotionAnalytics;
+  createdBy: string | User;
+  updatedBy?: string | User;
+  isActive: boolean;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+  // Virtual fields
+  isCurrentlyActive?: boolean;
+  timeRemaining?: number;
+  usagePercentage?: number;
+}
+
+export interface CreatePromotionRequest {
+  title: string;
+  description?: string;
+  type: Promotion['type'];
+  status?: Promotion['status'];
+  priority?: number;
+  startDate: string;
+  endDate: string;
+  discount?: PromotionDiscount;
+  applicableItems?: PromotionApplicableItem[];
+  rules?: PromotionRule[];
+  usageLimit?: PromotionUsageLimit;
+  banner?: PromotionBanner;
+  featuredProducts?: PromotionFeaturedProducts;
+  flashSale?: PromotionFlashSale;
+  targeting?: PromotionTargeting;
+  isActive?: boolean;
+  metadata?: Record<string, any>;
+}
+
+export interface UpdatePromotionRequest {
+  title?: string;
+  description?: string;
+  status?: Promotion['status'];
+  priority?: number;
+  startDate?: string;
+  endDate?: string;
+  discount?: PromotionDiscount;
+  applicableItems?: PromotionApplicableItem[];
+  rules?: PromotionRule[];
+  usageLimit?: PromotionUsageLimit;
+  banner?: PromotionBanner;
+  featuredProducts?: PromotionFeaturedProducts;
+  flashSale?: PromotionFlashSale;
+  targeting?: PromotionTargeting;
+  isActive?: boolean;
+  metadata?: Record<string, any>;
+}
+
+export interface PromotionFilters {
+  page?: number;
+  limit?: number;
+  type?: string;
+  status?: string;
+  active?: boolean;
+  storeId?: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PromotionStats {
+  statusStats: Array<{
+    _id: string;
+    count: number;
+    totalViews: number;
+    totalClicks: number;
+    totalConversions: number;
+    totalRevenue: number;
+  }>;
+  typeStats: Array<{
+    _id: string;
+    count: number;
+    avgViews: number;
+    avgClicks: number;
+    avgConversions: number;
+  }>;
+  currentlyActive: number;
+  expiringSoon: number;
 }
 
 export interface StoreListResponse {
@@ -1029,7 +1228,7 @@ export const productApi = {
 
 // Category management API methods  
 export const categoryApi = {
-  // Get all categories
+  // Get all categories (existing endpoint)
   getCategories: (params?: {
     page?: number
     limit?: number
@@ -1070,6 +1269,51 @@ export const categoryApi = {
       }
       data: Category[]
     }>(`/categories${query ? `?${query}` : ''}`)
+  },
+
+  // Get public categories (new endpoint for hierarchical support)
+  getPublicCategories: (params?: {
+    page?: number
+    limit?: number
+    parent?: string
+    level?: number
+    featured?: boolean
+    withProducts?: boolean
+    withChildren?: boolean
+    asTree?: boolean
+    hierarchical?: boolean
+    masterOnly?: boolean
+    sort?: string
+    order?: 'asc' | 'desc'
+    store?: string
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.parent) queryParams.append('parent', params.parent)
+    if (params?.level !== undefined) queryParams.append('level', params.level.toString())
+    if (params?.featured !== undefined) queryParams.append('featured', params.featured.toString())
+    if (params?.withProducts !== undefined) queryParams.append('withProducts', params.withProducts.toString())
+    if (params?.withChildren !== undefined) queryParams.append('withChildren', params.withChildren.toString())
+    if (params?.asTree !== undefined) queryParams.append('asTree', params.asTree.toString())
+    if (params?.hierarchical !== undefined) queryParams.append('hierarchical', params.hierarchical.toString())
+    if (params?.masterOnly !== undefined) queryParams.append('masterOnly', params.masterOnly.toString())
+    if (params?.sort) queryParams.append('sort', params.sort)
+    if (params?.order) queryParams.append('order', params.order)
+    if (params?.store) queryParams.append('store', params.store)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean
+      count: number
+      pagination?: {
+        total: number
+        page: number
+        pages: number
+        limit: number
+      }
+      data: Category[] | HierarchicalCategory[]
+    }>(`/categories/public${query ? `?${query}` : ''}`)
   },
 
   // Get a specific category by ID or slug
@@ -1400,5 +1644,192 @@ export const orderApi = {
     
     const query = queryParams.toString()
     return apiClient.get<{ success: boolean; downloadUrl: string }>(`/orders/export${query ? `?${query}` : ''}`)
+  },
+}
+
+// Promotion API
+export const promotionApi = {
+  // Get all promotions with filtering and pagination
+  getPromotions: (params?: PromotionFilters) => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.type) queryParams.append('type', params.type)
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.active !== undefined) queryParams.append('active', params.active.toString())
+    if (params?.storeId) queryParams.append('storeId', params.storeId)
+    if (params?.search) queryParams.append('search', params.search)
+    
+    // Handle sorting properly
+    if (params?.sortBy) {
+      const sortField = params.sortOrder === 'desc' ? `-${params.sortBy}` : params.sortBy
+      queryParams.append('sort', sortField)
+    }
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean;
+      results: number;
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        pages: number;
+      };
+      data: { promotions: Promotion[] };
+    }>(`/promotions${query ? `?${query}` : ''}`)
+  },
+
+  // Get active promotions (public endpoint)
+  getActivePromotions: (params?: {
+    type?: string;
+    storeId?: string;
+    categoryId?: string;
+    position?: string;
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.type) queryParams.append('type', params.type)
+    if (params?.storeId) queryParams.append('storeId', params.storeId)
+    if (params?.categoryId) queryParams.append('categoryId', params.categoryId)
+    if (params?.position) queryParams.append('position', params.position)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean;
+      results: number;
+      data: { promotions: Promotion[] };
+    }>(`/promotions/active${query ? `?${query}` : ''}`)
+  },
+
+  // Get featured products
+  getFeaturedProducts: (params?: {
+    limit?: number;
+    storeId?: string;
+    categoryId?: string;
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.storeId) queryParams.append('storeId', params.storeId)
+    if (params?.categoryId) queryParams.append('categoryId', params.categoryId)
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean;
+      results: number;
+      data: { products: Product[] };
+    }>(`/promotions/featured-products${query ? `?${query}` : ''}`)
+  },
+
+  // Get flash sales
+  getFlashSales: (params?: {
+    limit?: number;
+    upcoming?: boolean;
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.upcoming) queryParams.append('upcoming', params.upcoming.toString())
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean;
+      results: number;
+      data: { flashSales: Promotion[] };
+    }>(`/promotions/flash-sales${query ? `?${query}` : ''}`)
+  },
+
+  // Get promotional banners
+  getPromotionalBanners: (params?: {
+    position?: string;
+    limit?: number;
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.position) queryParams.append('position', params.position)
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean;
+      results: number;
+      data: { banners: Promotion[] };
+    }>(`/promotions/banners${query ? `?${query}` : ''}`)
+  },
+
+  // Get single promotion by ID
+  getPromotion: (id: string) => {
+    return apiClient.get<{
+      success: boolean;
+      data: { promotion: Promotion };
+    }>(`/promotions/${id}`)
+  },
+
+  // Create new promotion
+  createPromotion: (data: CreatePromotionRequest) => {
+    return apiClient.post<{
+      success: boolean;
+      data: { promotion: Promotion };
+    }>('/promotions', data)
+  },
+
+  // Update promotion
+  updatePromotion: (id: string, data: UpdatePromotionRequest) => {
+    return apiClient.patch<{
+      success: boolean;
+      data: { promotion: Promotion };
+    }>(`/promotions/${id}`, data)
+  },
+
+  // Delete promotion
+  deletePromotion: (id: string) => {
+    return apiClient.delete<{
+      success: boolean;
+      data: null;
+    }>(`/promotions/${id}`)
+  },
+
+  // Toggle promotion status (activate/deactivate)
+  togglePromotionStatus: (id: string) => {
+    return apiClient.patch<{
+      success: boolean;
+      data: { promotion: Promotion; message: string };
+    }>(`/promotions/${id}/toggle-status`)
+  },
+
+  // Track promotion event (view/click)
+  trackPromotionEvent: (id: string, eventType: 'view' | 'click') => {
+    return apiClient.post<{
+      success: boolean;
+      data: { analytics: PromotionAnalytics };
+    }>(`/promotions/${id}/track`, { eventType })
+  },
+
+  // Get promotion statistics (admin only)
+  getPromotionStats: () => {
+    return apiClient.get<{
+      success: boolean;
+      data: PromotionStats;
+    }>('/promotions/stats')
+  },
+
+  // Calculate discount for items
+  calculateDiscount: (data: {
+    items: Array<{ productId: string; quantity: number; price: number }>;
+    userId?: string;
+    storeId?: string;
+    orderTotal: number;
+  }) => {
+    return apiClient.post<{
+      success: boolean;
+      data: {
+        totalDiscount: number;
+        appliedPromotions: Array<{
+          promotionId: string;
+          title: string;
+          type: string;
+          discountAmount: number;
+        }>;
+        originalTotal: number;
+        finalTotal: number;
+      };
+    }>('/promotions/calculate-discount', data)
   },
 }

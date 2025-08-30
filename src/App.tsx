@@ -10,7 +10,9 @@ import StoresPage from "@/app/stores/page"
 import ProductsPage from "@/app/products/page"
 import UsersPage from "@/app/users/page"
 import CategoriesPage from "@/app/categories/page"
+import AdminHierarchicalCategoriesPage from "@/app/admin/categories/hierarchical/page"
 import OrdersPage from "@/app/orders/page"
+import PromotionsPage from "@/app/promotions/page"
 import InventoryManagementPage from "@/app/inventory-management/page"
 import LoginPage from "@/app/login/page"
 import UnauthorizedPage from "@/app/unauthorized/page"
@@ -67,6 +69,11 @@ function App() {
                 <UsersPage />
               </UserManagementRoute>
             } />
+            <Route path="/admin/categories/hierarchical" element={
+              <RoleGuard requiredPermission="categories-admin">
+                <AdminHierarchicalCategoriesPage />
+              </RoleGuard>
+            } />
             
             {/* Merchant-only routes */}
             <Route path="/products" element={
@@ -81,7 +88,7 @@ function App() {
             } />
             <Route path="/promotions" element={
               <RoleGuard requiredPermission="promotions">
-                <div>Promotions Page - Coming Soon</div>
+                <PromotionsPage />
               </RoleGuard>
             } />
             <Route path="/orders" element={
