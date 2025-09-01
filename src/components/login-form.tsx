@@ -136,9 +136,9 @@ export function LoginForm({
               </div>
               <div 
                 className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
-                onClick={() => fillCredentials('merchant@dksh.com', 'admin123')}
+                onClick={() => fillCredentials('merchant@dksh.com', 'merchant123')}
               >
-                <strong>Merchant:</strong> merchant@dksh.com / admin123
+                <strong>Merchant:</strong> merchant@dksh.com / merchant123
               </div>
               <div 
                 className="cursor-pointer hover:bg-muted-foreground/10 p-1 rounded transition-colors"
