@@ -18,6 +18,7 @@ const storeStatusConfig = {
   active: { label: 'Active', variant: 'default' as const },
   suspended: { label: 'Suspended', variant: 'destructive' as const },
   inactive: { label: 'Inactive', variant: 'outline' as const },
+  closed: { label: 'Closed', variant: 'destructive' as const },
 }
 
 export const StoreDetailView: React.FC<StoreDetailViewProps> = ({

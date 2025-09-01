@@ -215,6 +215,13 @@ export interface Store {
   };
   businessInfo?: {
     businessType: string;
+    taxId?: string;
+    registrationNumber?: string;
+  };
+  payoutInfo?: {
+    bankName?: string;
+    accountNumber?: string;
+    accountName?: string;
   };
   metrics?: {
     totalSales: number;
@@ -240,7 +247,7 @@ export interface ProductVariant {
     quantity: number;
     trackInventory: boolean;
     lowStockThreshold?: number;
-  } | number; // Support both object and number for inventory
+  }; // Standardize to object format only
   isDefault: boolean;
   images?: string[];
 }
@@ -253,13 +260,13 @@ export interface Product {
   description: {
     short: string;
     detailed: string;
-  } | string; // Support both object and string formats
+  }; // Standardize to object format only
   categories: Category[] | string[];
   category?: Category | string; // Support single category
   store: Store | string;
   status: 'draft' | 'active' | 'archived' | 'deleted';
   featured: boolean;
-  images: string[] | { url: string; alt?: string; isPrimary?: boolean }[]; // Support both formats
+  images: string[]; // Standardize to string array only
   hasVariants: boolean;
   variants: ProductVariant[];
   rating?: {

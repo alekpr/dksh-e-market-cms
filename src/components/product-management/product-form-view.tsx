@@ -135,9 +135,7 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
     updatedImages[index] = value
     onFormDataChange({
       ...formData,
-      images: updatedImages.filter(img => 
-        typeof img === 'string' ? img.trim() !== '' : img && ((img as any).url || (img as any).src)
-      )
+      images: updatedImages.filter(img => img.trim() !== '')
     })
   }
 

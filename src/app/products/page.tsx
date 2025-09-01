@@ -107,6 +107,7 @@ export default function ProductsPage() {
       total: 0,
       active: 0,
       draft: 0,
+      archived: 0,
       outOfStock: 0,
       featured: 0
     },

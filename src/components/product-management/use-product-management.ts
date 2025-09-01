@@ -24,7 +24,7 @@ export interface ProductFormData {
     }
     attributes: Record<string, string>
   }[]
-  images: string[] | { url: string; alt?: string; isPrimary?: boolean }[] // Support both formats
+  images: string[] // Standardize to string array only
   status: 'draft' | 'active' | 'archived' | 'deleted'
   featured: boolean
   meta?: {
@@ -265,9 +265,7 @@ export const useProductManagement = () => {
     setSelectedProduct(product)
     setFormData({
       name: product.name,
-      description: typeof product.description === 'string' 
-        ? { short: product.description.substring(0, 100), detailed: product.description }
-        : product.description,
+      description: product.description,
       basePrice: product.basePrice,
       categories: typeof product.categories[0] === 'string' 
         ? product.categories as string[]
@@ -277,14 +275,10 @@ export const useProductManagement = () => {
         name: v.name,
         sku: v.sku || '',
         price: v.price,
-        inventory: typeof v.inventory === 'number' 
-          ? { quantity: v.inventory, trackInventory: true, lowStockThreshold: 5 }
-          : v.inventory,
+        inventory: v.inventory,
         attributes: v.attributes || {}
       })),
-      images: Array.isArray(product.images) 
-        ? product.images.map(img => typeof img === 'string' ? img : img.url)
-        : [],
+      images: product.images,
       status: product.status,
       featured: product.featured,
       meta: {
