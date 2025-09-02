@@ -18,6 +18,7 @@ export interface StoreFormData {
     country: string
   }
   owner: string
+  status?: 'pending' | 'active' | 'suspended' | 'inactive' | 'closed'
 }
 
 // Simple toast replacement - you can implement proper toast later
@@ -61,7 +62,8 @@ export const useStoreManagement = () => {
       zipCode: '',
       country: 'Thailand'
     },
-    owner: ''
+    owner: '',
+    status: 'pending'
   })
 
   // Fetch stores data
@@ -138,7 +140,8 @@ export const useStoreManagement = () => {
         zipCode: '',
         country: 'Thailand'
       },
-      owner: ''
+      owner: '',
+      status: 'pending'
     })
   }
 
@@ -166,7 +169,8 @@ export const useStoreManagement = () => {
         zipCode: store.address?.zipCode || '',
         country: store.address?.country || 'Thailand'
       },
-      owner: store.owner?._id || ''
+      owner: store.owner?._id || '',
+      status: store.status
     })
   }
 
@@ -194,7 +198,7 @@ export const useStoreManagement = () => {
       // Use current user's ID if owner is not specified
       const ownerIdToUse = formData.owner.trim() || user?._id || ''
       
-      const storeData = {
+      const storeData: any = {
         name: formData.name,
         description: formData.description,
         contactEmail: formData.contactEmail,
@@ -207,11 +211,35 @@ export const useStoreManagement = () => {
 
       if (currentView === 'edit' && selectedStore) {
         console.log('🔄 Updating store with ID:', selectedStore._id)
+        
+        // First update basic store data (without status)
         const response = await storeApi.updateStore(selectedStore._id, storeData)
         console.log('📥 Update store response:', response)
+        
         if (response.success === true || response.status === 'success') {
-          toast.success('Store updated successfully')
-          console.log('✅ Store updated successfully')
+          // If status has changed, update it separately
+          if (formData.status && formData.status !== selectedStore.status) {
+            console.log('🔧 Status changed, updating separately:', selectedStore.status, '->', formData.status)
+            
+            try {
+              const statusResponse = await storeApi.updateStoreStatus(selectedStore._id, { status: formData.status })
+              console.log('📥 Update status response:', statusResponse)
+              
+              if (statusResponse.success === true || statusResponse.status === 'success') {
+                toast.success('Store and status updated successfully')
+                console.log('✅ Store and status updated successfully')
+              } else {
+                console.log('❌ Store updated but status update failed:', statusResponse)
+                toast.error('Store updated but status update failed: ' + (statusResponse.message || 'Unknown error'))
+              }
+            } catch (statusError) {
+              console.error('❌ Status update error:', statusError)
+              toast.error('Store updated but status update failed')
+            }
+          } else {
+            toast.success('Store updated successfully')
+            console.log('✅ Store updated successfully')
+          }
         } else {
           console.log('❌ Failed to update store:', response)
           toast.error(response.message || 'Failed to update store')
@@ -294,6 +322,42 @@ export const useStoreManagement = () => {
     setSelectedStore(null)
   }
 
+  // Handle status change
+  const handleStatusChange = async (storeId: string, newStatus: Store['status']) => {
+    try {
+      setLoading(true)
+      console.log('🔄 Updating store status:', storeId, 'to', newStatus)
+      
+      const response = await storeApi.updateStoreStatus(storeId, { status: newStatus })
+      console.log('📥 Update status response:', response)
+      
+      if (response.success === true || response.status === 'success') {
+        toast.success(`Store status updated to ${newStatus}`)
+        console.log('✅ Store status updated successfully')
+        
+        // Update the selectedStore if it's the one being updated
+        if (selectedStore && selectedStore._id === storeId) {
+          setSelectedStore({
+            ...selectedStore,
+            status: newStatus
+          })
+        }
+        
+        // Refresh the stores list to reflect the change
+        await fetchStores()
+        
+      } else {
+        console.log('❌ Failed to update store status:', response)
+        toast.error(response.message || 'Failed to update store status')
+      }
+    } catch (error: any) {
+      console.error('Failed to update store status:', error)
+      toast.error('Failed to update store status. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return {
     // State
     stores,
@@ -321,6 +385,7 @@ export const useStoreManagement = () => {
     handleView,
     handleSave,
     handleDelete,
+    handleStatusChange,
     handleClearFilters,
     handleCancel,
     fetchStores

@@ -31,6 +31,7 @@ export default function StoresPage() {
     handleSave,
     handleCancel,
     setFormData,
+    handleStatusChange,
   } = useStoreManagement()
 
   if (error) {
@@ -93,6 +94,7 @@ export default function StoresPage() {
             store={selectedStore}
             onEdit={() => handleEdit(selectedStore)}
             onBack={handleCancel}
+            onStatusChange={handleStatusChange}
           />
         ) : null
 

@@ -1,15 +1,17 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ArrowLeft, Edit, Calendar, MapPin, Phone, Mail, User, Building, TrendingUp } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowLeft, Edit, Calendar, MapPin, Phone, Mail, User, Building, TrendingUp, Settings, Loader2 } from 'lucide-react'
 import type { Store } from '@/lib/api'
 
 interface StoreDetailViewProps {
   store: Store
   onEdit: (store: Store) => void
   onBack: () => void
+  onStatusChange?: (storeId: string, newStatus: Store['status']) => Promise<void>
 }
 
 // Store status configuration
@@ -24,8 +26,23 @@ const storeStatusConfig = {
 export const StoreDetailView: React.FC<StoreDetailViewProps> = ({
   store,
   onEdit,
-  onBack
+  onBack,
+  onStatusChange
 }) => {
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
+  const handleStatusChange = async (newStatus: Store['status']) => {
+    if (!onStatusChange || newStatus === store.status) return
+
+    try {
+      setIsUpdatingStatus(true)
+      await onStatusChange(store._id, newStatus)
+    } catch (error) {
+      console.error('Error updating status:', error)
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -87,6 +104,85 @@ export const StoreDetailView: React.FC<StoreDetailViewProps> = ({
             </div>
           </CardContent>
         </Card>
+
+        {/* Status Management */}
+        {onStatusChange && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Status Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Change Store Status</label>
+                <Select 
+                  value={store.status} 
+                  onValueChange={handleStatusChange}
+                  disabled={isUpdatingStatus}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="w-2 h-2 p-0"></Badge>
+                        Pending
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="active">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="w-2 h-2 p-0"></Badge>
+                        Active
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="suspended">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="destructive" className="w-2 h-2 p-0"></Badge>
+                        Suspended
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="inactive">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="w-2 h-2 p-0"></Badge>
+                        Inactive
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="closed">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="destructive" className="w-2 h-2 p-0"></Badge>
+                        Closed
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {isUpdatingStatus && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Updating status...
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Select a new status for this store. Changes will be applied immediately.
+                </p>
+              </div>
+              
+              {/* Status Information */}
+              <div className="pt-2 border-t">
+                <h4 className="text-sm font-medium mb-2">Status Descriptions:</h4>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div><strong>Pending:</strong> Store is awaiting approval</div>
+                  <div><strong>Active:</strong> Store is operational and accepting orders</div>
+                  <div><strong>Suspended:</strong> Store is temporarily disabled</div>
+                  <div><strong>Inactive:</strong> Store is disabled but can be reactivated</div>
+                  <div><strong>Closed:</strong> Store is permanently closed</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Contact Information */}
         <Card>

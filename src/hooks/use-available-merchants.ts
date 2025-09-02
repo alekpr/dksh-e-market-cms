@@ -5,9 +5,10 @@ export interface AvailableMerchant {
   id: string
   name: string
   email: string
+  hasStore?: boolean // Add flag to indicate if merchant already has a store
 }
 
-export function useAvailableMerchants() {
+export function useAvailableMerchants(includeAllMerchants = false) {
   const [merchants, setMerchants] = useState<AvailableMerchant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -19,6 +20,7 @@ export function useAvailableMerchants() {
         setError(null)
 
         console.log('🔄 Starting to fetch available merchants...')
+        console.log('📋 Include all merchants:', includeAllMerchants)
 
         // Get all users with merchant role
         console.log('📋 Fetching all merchant users...')
@@ -31,6 +33,21 @@ export function useAvailableMerchants() {
 
         const allMerchants: any[] = Array.isArray(usersResponse.data) ? usersResponse.data : []
         console.log('📊 Total merchants found:', allMerchants.length)
+
+        if (includeAllMerchants) {
+          // Return all merchants without filtering
+          console.log('✅ Returning all merchants (no filtering)')
+          const transformedMerchants: AvailableMerchant[] = allMerchants.map((merchant: any) => ({
+            id: merchant._id,
+            name: merchant.name,
+            email: merchant.email,
+            hasStore: false // We don't need to check store status when showing all
+          }))
+
+          console.log('🎯 Final merchants (all):', transformedMerchants)
+          setMerchants(transformedMerchants)
+          return
+        }
 
         // Get all stores to check which merchants already have stores
         console.log('🏪 Fetching all stores...')
@@ -56,7 +73,8 @@ export function useAvailableMerchants() {
         const transformedMerchants: AvailableMerchant[] = availableMerchants.map((merchant: any) => ({
           id: merchant._id,
           name: merchant.name,
-          email: merchant.email
+          email: merchant.email,
+          hasStore: false
         }))
 
         console.log('🎯 Final available merchants:', transformedMerchants)
@@ -71,7 +89,7 @@ export function useAvailableMerchants() {
     }
 
     fetchAvailableMerchants()
-  }, [])
+  }, [includeAllMerchants])
 
   return { merchants, loading, error }
 }

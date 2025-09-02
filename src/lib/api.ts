@@ -2,7 +2,8 @@
  * API Client Configuration and Utilities
  */
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+export const API_BASE_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
 
 // Types for API responses
 export interface ApiResponse<T = any> {
@@ -761,10 +762,11 @@ export interface UpdateStoreRequest {
     accountNumber?: string
     accountName?: string
   }
+  status?: 'pending' | 'active' | 'suspended' | 'inactive' | 'closed'
 }
 
 export interface StoreStatusRequest {
-  status: 'pending' | 'active' | 'suspended' | 'inactive'
+  status: 'pending' | 'active' | 'suspended' | 'inactive' | 'closed'
 }
 
 export interface StoreCommissionRequest {
@@ -1111,7 +1113,7 @@ export const storeApi = {
 
   // Update store status
   updateStoreStatus: (id: string, data: StoreStatusRequest) =>
-    apiClient.patch<{ data: Store }>(`/stores/${id}/status`, data),
+    apiClient.put<{ data: Store }>(`/stores/${id}/status`, data),
 
   // Update store commission
   updateStoreCommission: (id: string, data: StoreCommissionRequest) =>

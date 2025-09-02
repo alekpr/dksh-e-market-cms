@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
 import { ROLE_DESCRIPTIONS, NAVIGATION_PERMISSIONS, type UserRole } from "@/lib/constants/roles"
+import { API_BASE_URL } from "@/lib/api"
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -105,11 +106,11 @@ export default function DashboardPage() {
 
         // Fetch multiple endpoints in parallel
         const [summaryRes, inventoryRes, productsRes, promotionsRes, ordersRes] = await Promise.all([
-          fetch('http://localhost:3000/api/v1/analytics/merchant/summary', { headers }),
-          fetch('http://localhost:3000/api/v1/analytics/merchant/inventory', { headers }),
-          fetch(`http://localhost:3000/api/v1/products?store=${user?.merchantInfo?.storeId}&status=active&limit=1`, { headers }),
-          fetch('http://localhost:3000/api/v1/promotions?limit=1', { headers }),
-          fetch(`http://localhost:3000/api/v1/stores/${user?.merchantInfo?.storeId}/orders?limit=5&sortBy=createdAt&sortOrder=desc`, { headers })
+          fetch(`${API_BASE_URL}/analytics/merchant/summary`, { headers }),
+          fetch(`${API_BASE_URL}/analytics/merchant/inventory`, { headers }),
+          fetch(`${API_BASE_URL}/products?store=${user?.merchantInfo?.storeId}&status=active&limit=1`, { headers }),
+          fetch(`${API_BASE_URL}/promotions?limit=1`, { headers }),
+          fetch(`${API_BASE_URL}/stores/${user?.merchantInfo?.storeId}/orders?limit=5&sortBy=createdAt&sortOrder=desc`, { headers })
         ])
 
         const [summaryData, inventoryData, productsData, promotionsData, ordersData] = await Promise.all([

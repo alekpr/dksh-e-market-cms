@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Save, X, Loader2, User, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { StoreFormData, ViewMode } from './use-store-management'
@@ -27,7 +28,8 @@ export const StoreFormView: React.FC<StoreFormViewProps> = ({
 }) => {
   const isEditing = currentView === 'edit'
   const title = isEditing ? 'Edit Store' : 'Add New Store'
-  const { merchants, loading: merchantsLoading, error: merchantsError } = useAvailableMerchants()
+  // Show all merchants when editing, only available merchants when adding
+  const { merchants, loading: merchantsLoading, error: merchantsError } = useAvailableMerchants(isEditing)
 
   const handleInputChange = (field: string, value: string) => {
     if (field.startsWith('address.')) {
@@ -38,6 +40,11 @@ export const StoreFormView: React.FC<StoreFormViewProps> = ({
           ...formData.address,
           [addressField]: value
         }
+      })
+    } else if (field === 'status') {
+      onFormDataChange({
+        ...formData,
+        status: value as 'pending' | 'active' | 'suspended' | 'inactive' | 'closed'
       })
     } else {
       onFormDataChange({
@@ -57,6 +64,40 @@ export const StoreFormView: React.FC<StoreFormViewProps> = ({
     return `${displayName} (${merchant.email})`
   }
 
+  const getStatusBadgeVariant = (status?: string) => {
+    switch (status) {
+      case 'active':
+        return 'default'
+      case 'pending':
+        return 'secondary'
+      case 'suspended':
+        return 'destructive'
+      case 'inactive':
+        return 'outline'
+      case 'closed':
+        return 'destructive'
+      default:
+        return 'secondary'
+    }
+  }
+
+  const getStatusLabel = (status?: string) => {
+    switch (status) {
+      case 'active':
+        return 'Active'
+      case 'pending':
+        return 'Pending'
+      case 'suspended':
+        return 'Suspended'
+      case 'inactive':
+        return 'Inactive'
+      case 'closed':
+        return 'Closed'
+      default:
+        return 'Pending'
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -67,7 +108,14 @@ export const StoreFormView: React.FC<StoreFormViewProps> = ({
             Back to Store List
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+              {isEditing && formData.status && (
+                <Badge variant={getStatusBadgeVariant(formData.status)}>
+                  {getStatusLabel(formData.status)}
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground">
               {isEditing ? 'Update store information' : 'Create a new store in the marketplace'}
             </p>
@@ -113,6 +161,29 @@ export const StoreFormView: React.FC<StoreFormViewProps> = ({
                 rows={3}
               />
             </div>
+            {isEditing && (
+              <div className="space-y-2">
+                <Label htmlFor="status">Store Status</Label>
+                <Select 
+                  value={formData.status || 'pending'} 
+                  onValueChange={(value) => handleInputChange('status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select store status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Change the store's operational status
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -233,8 +304,8 @@ export const StoreFormView: React.FC<StoreFormViewProps> = ({
                       merchantsLoading 
                         ? "Loading merchants..." 
                         : merchants.length === 0 
-                          ? "No available merchants"
-                          : "Select a merchant"
+                          ? isEditing ? "No merchants available" : "No available merchants"
+                          : isEditing ? "Select a merchant (all shown)" : "Select a merchant"
                     }
                   />
                 </SelectTrigger>
@@ -263,8 +334,12 @@ export const StoreFormView: React.FC<StoreFormViewProps> = ({
               
               <p className="text-sm text-muted-foreground">
                 {merchants.length === 0 && !merchantsLoading
-                  ? "All merchants already have stores assigned. Create a new merchant user first."
-                  : "Select a merchant who will own this store. Only merchants without existing stores are shown."
+                  ? isEditing 
+                    ? "No merchants found in the system."
+                    : "All merchants already have stores assigned. Create a new merchant user first."
+                  : isEditing
+                    ? "Select a merchant who will own this store. All merchant accounts are shown."
+                    : "Select a merchant who will own this store. Only merchants without existing stores are shown."
                 }
               </p>
             </div>
