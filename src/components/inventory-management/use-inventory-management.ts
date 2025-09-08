@@ -4,14 +4,14 @@ import { productApi, type Product } from '@/lib/api'
 
 export type InventoryViewMode = 'dashboard' | 'stock-tracking' | 'low-stock' | 'bulk-update'
 
-export interface InventoryItem {
+interface InventoryItem {
   productId: string
   productName: string
   productSlug: string
   productStatus: string
   variantId: string
   variantName: string
-  sku?: string
+  sku: string
   currentStock: number
   lowStockThreshold: number
   isLowStock: boolean
@@ -19,7 +19,7 @@ export interface InventoryItem {
   trackInventory: boolean
   storeName?: string
   storeId?: string
-  images: string[]
+  images: string[] | { url: string; alt?: string; position?: number; isMain?: boolean }[]
   basePrice: number
 }
 
@@ -196,7 +196,7 @@ export const useInventoryManagement = () => {
           productStatus: product.status,
           variantId: variant._id,
           variantName: variant.name,
-          sku: variant.sku,
+          sku: variant.sku || 'N/A',
           currentStock: variant.inventory.quantity,
           lowStockThreshold: variant.inventory.lowStockThreshold || 5,
           isLowStock,
