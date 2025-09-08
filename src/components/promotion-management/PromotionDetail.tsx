@@ -3,12 +3,35 @@
  * Displays detailed information about a promotion
  */
 import { format } from 'date-fns'
-import { Edit, Copy, Trash2, Calendar, Target, TrendingUp } from 'lucide-react'
+import { Edit, Copy, Trash2, Calendar, Target, TrendingUp, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import type { Promotion } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/api'
+
+// Helper function to get proper image URL
+const getImageUrl = (image: string | { url: string; alt?: string; position?: number; isMain?: boolean }) => {
+  if (typeof image === 'string') {
+    // Handle string format - check if it's already a full URL
+    if (image.startsWith('http')) {
+      return image
+    }
+    // If it's just an ID, construct the backend URL
+    return `${API_BASE_URL}/files/${image}/serve`
+  }
+  
+  // Handle object format
+  if (image && typeof image === 'object' && image.url) {
+    if (image.url.startsWith('http')) {
+      return image.url
+    }
+    return `${API_BASE_URL}/files/${image.url}/serve`
+  }
+  
+  return ''
+}
 
 interface PromotionDetailProps {
   promotion: Promotion
@@ -142,27 +165,76 @@ export function PromotionDetail({ promotion, onEdit, onDelete, onDuplicate }: Pr
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {promotion.metadata.productPricing.map((item: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <p className="font-medium">Product {index + 1}</p>
-                        <p className="text-sm text-muted-foreground">ID: {item.productId}</p>
-                      </div>
-                      <div className="text-right space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground line-through">
-                            ฿{item.originalPrice}
-                          </span>
-                          <span className="font-medium text-lg">
-                            ฿{item.promotionalPrice}
-                          </span>
+                  {promotion.metadata.productPricing.map((item: any, index: number) => {
+                    // Try to get product details from featuredProducts
+                    const productDetails = promotion.featuredProducts?.productIds?.find((p: any) => 
+                      (p._id || p) === item.productId
+                    )
+                    
+                    // Handle both string ID and object format with proper typing
+                    const productInfo = (typeof productDetails === 'object' && productDetails !== null && typeof productDetails !== 'string') 
+                      ? (productDetails as any) 
+                      : null
+                    
+                    return (
+                      <div key={index} className="flex items-center gap-4 p-4 border rounded-lg">
+                        {/* Product Image */}
+                        <div className="flex-shrink-0">
+                          {productInfo?.images && Array.isArray(productInfo.images) && productInfo.images.length > 0 ? (
+                            <img
+                              src={getImageUrl(productInfo.images[0])}
+                              alt={productInfo.name || `Product ${index + 1}`}
+                              className="w-16 h-16 object-cover rounded border"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                                const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder')
+                                if (placeholder) (placeholder as HTMLElement).style.display = 'flex'
+                              }}
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center">
+                              <Package className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="placeholder hidden w-16 h-16 bg-gray-100 rounded border items-center justify-center">
+                            <Package className="w-6 h-6 text-gray-400" />
+                          </div>
                         </div>
-                        <div className="text-sm text-green-600">
-                          Save ฿{item.savings} ({item.discountValue}% off)
+                        
+                        {/* Product Details */}
+                        <div className="flex-1 space-y-1">
+                          <p className="font-medium">{productInfo?.name || `Product ${index + 1}`}</p>
+                          <p className="text-sm text-muted-foreground">
+                            SKU: {productInfo?.sku || item.productId}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            ID: {item.productId}
+                          </p>
+                          {productInfo?.category && (
+                            <Badge variant="outline" className="text-xs">
+                              {productInfo.category.name}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Pricing Info */}
+                        <div className="text-right space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground line-through">
+                              ฿{(item.originalPrice || 0).toLocaleString()}
+                            </span>
+                            <span className="font-medium text-lg">
+                              ฿{(item.promotionalPrice || 0).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="text-sm text-green-600">
+                            Save ฿{((item.savings || 0)).toLocaleString()} 
+                            {item.discountValue ? ` (${item.discountValue}% off)` : ''}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>

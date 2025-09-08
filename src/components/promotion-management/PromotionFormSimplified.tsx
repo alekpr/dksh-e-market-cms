@@ -14,6 +14,29 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ProductSelectorWithPricing } from './ProductSelectorWithPricing'
 import type { Promotion, CreatePromotionRequest, UpdatePromotionRequest } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/api'
+
+// Helper function to get proper image URL
+const getImageUrl = (image: string | { url: string; alt?: string; position?: number; isMain?: boolean }) => {
+  if (typeof image === 'string') {
+    // Handle string format - check if it's already a full URL
+    if (image.startsWith('http')) {
+      return image
+    }
+    // If it's just an ID, construct the backend URL
+    return `${API_BASE_URL}/files/${image}/serve`
+  }
+  
+  // Handle object format
+  if (image && typeof image === 'object' && image.url) {
+    if (image.url.startsWith('http')) {
+      return image.url
+    }
+    return `${API_BASE_URL}/files/${image.url}/serve`
+  }
+  
+  return ''
+}
 
 interface ProductWithPricing {
   product: {
@@ -250,7 +273,7 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
   }, [formData, selectedProducts, onSubmit])
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="w-full p-6 space-y-8">
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Information */}
         <Card>
@@ -495,7 +518,8 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
             <CardHeader>
               <CardTitle>Promotion Summary</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              {/* Statistics */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="font-medium">Total Products</p>
@@ -512,6 +536,52 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
                   <p className="text-2xl font-bold text-green-600">
                     ฿{selectedProducts.reduce((sum, item) => sum + (item.promotionalPrice || 0), 0).toLocaleString()}
                   </p>
+                </div>
+              </div>
+
+              {/* Selected Products List - Preview */}
+              <div>
+                <h4 className="font-medium mb-3">Selected Products</h4>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {selectedProducts.map((item, index) => (
+                    <div key={item.product._id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      {item.product.images && item.product.images.length > 0 ? (
+                        <img
+                          src={getImageUrl(item.product.images[0])}
+                          alt={item.product.name}
+                          className="w-12 h-12 object-cover rounded border"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder')
+                            if (placeholder) (placeholder as HTMLElement).style.display = 'flex'
+                          }}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center">
+                          <Package className="w-4 h-4 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="placeholder hidden w-12 h-12 bg-gray-200 rounded border items-center justify-center">
+                        <Package className="w-4 h-4 text-gray-400" />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm line-clamp-1">{item.product.name || 'No Name'}</p>
+                        <p className="text-xs text-muted-foreground">SKU: {item.product.sku || 'No SKU'}</p>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground line-through">
+                            ฿{(item.product.basePrice || item.product.price || 0).toLocaleString()}
+                          </span>
+                          <span className="text-sm font-medium text-green-600">
+                            ฿{(item.promotionalPrice || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>

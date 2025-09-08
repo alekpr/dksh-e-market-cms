@@ -16,6 +16,28 @@ import { toast } from 'sonner'
 import { tokenStorage, API_BASE_URL } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 
+// Helper function to get proper image URL
+const getImageUrl = (image: string | { url: string; alt?: string; position?: number; isMain?: boolean }) => {
+  if (typeof image === 'string') {
+    // Handle string format - check if it's already a full URL
+    if (image.startsWith('http')) {
+      return image
+    }
+    // If it's just an ID, construct the backend URL
+    return `${API_BASE_URL}/files/${image}/serve`
+  }
+  
+  // Handle object format
+  if (image && typeof image === 'object' && image.url) {
+    if (image.url.startsWith('http')) {
+      return image.url
+    }
+    return `${API_BASE_URL}/files/${image.url}/serve`
+  }
+  
+  return ''
+}
+
 interface Product {
   _id: string
   name: string
@@ -211,18 +233,26 @@ export function ProductSelectorWithPricing({
                 >
                   {/* Product Info */}
                   <div className="flex items-center gap-3 flex-1">
-                    {item.product.images && item.product.images[0] && (
+                    {item.product.images && item.product.images.length > 0 ? (
                       <img
-                        src={item.product.images[0]}
+                        src={getImageUrl(item.product.images[0])}
                         alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded"
+                        className="w-16 h-16 object-cover rounded border"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder')
+                          if (placeholder) (placeholder as HTMLElement).style.display = 'flex'
+                        }}
                       />
-                    )}
+                    ) : null}
+                    <div className="placeholder hidden w-16 h-16 bg-gray-100 rounded border items-center justify-center">
+                      <Package className="w-6 h-6 text-gray-400" />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{item.product.name}</p>
-                      <p className="text-xs text-muted-foreground">SKU: {item.product.sku}</p>
+                      <p className="font-medium text-sm line-clamp-2">{item.product.name || 'No Name'}</p>
+                      <p className="text-xs text-muted-foreground">SKU: {item.product.sku || 'No SKU'}</p>
                       <p className="text-xs text-muted-foreground">
-                        Original: ฿{(item.product.basePrice || item.product.price).toLocaleString()}
+                        Original: ฿{(item.product.basePrice || item.product.price || 0).toLocaleString()}
                       </p>
                       {item.product.category && (
                         <Badge variant="outline" className="text-xs mt-1">
@@ -315,7 +345,7 @@ export function ProductSelectorWithPricing({
       {/* Product selection modal/dialog */}
       {showSelector && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-4xl max-h-[80vh] flex flex-col">
+          <Card className="w-full max-w-7xl max-h-[90vh] flex flex-col">
             <CardHeader className="flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div>
@@ -386,22 +416,34 @@ export function ProductSelectorWithPricing({
                             />
                             
                             <div className="flex-1 min-w-0">
-                              {product.images && product.images[0] && (
+                              {product.images && product.images.length > 0 ? (
                                 <img
-                                  src={product.images[0]}
+                                  src={getImageUrl(product.images[0])}
                                   alt={product.name}
-                                  className="w-full h-32 object-cover rounded mb-3"
+                                  className="w-full h-32 object-cover rounded mb-3 border"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                    const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder')
+                                    if (placeholder) (placeholder as HTMLElement).style.display = 'flex'
+                                  }}
                                 />
+                              ) : (
+                                <div className="w-full h-32 bg-gray-100 rounded mb-3 border flex items-center justify-center">
+                                  <Package className="w-8 h-8 text-gray-400" />
+                                </div>
                               )}
+                              <div className="placeholder hidden w-full h-32 bg-gray-100 rounded mb-3 border items-center justify-center">
+                                <Package className="w-8 h-8 text-gray-400" />
+                              </div>
                               
                               <div className="space-y-1">
                                 <h4 className="font-medium text-sm line-clamp-2">
-                                  {product.name}
+                                  {product.name || 'No Name'}
                                 </h4>
                                 
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium text-primary">
-                                    ฿{(product.basePrice || product.price).toLocaleString()}
+                                    ฿{(product.basePrice || product.price || 0).toLocaleString()}
                                   </span>
                                   {product.stock !== undefined && (
                                     <Badge variant="secondary" className="text-xs">
@@ -411,7 +453,7 @@ export function ProductSelectorWithPricing({
                                 </div>
                                 
                                 <p className="text-xs text-muted-foreground">
-                                  SKU: {product.sku}
+                                  SKU: {product.sku || 'No SKU'}
                                 </p>
                                 
                                 {product.category && (

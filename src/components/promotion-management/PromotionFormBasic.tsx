@@ -109,7 +109,7 @@ export function PromotionForm({ promotion, onSubmit, onCancel, loading = false }
   }, [formData, onSubmit])
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="w-full p-6 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
