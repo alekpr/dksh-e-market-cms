@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { tokenStorage } from '@/lib/api'
+import { tokenStorage, API_BASE_URL } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface Product {
@@ -43,13 +43,15 @@ interface ProductSelectorWithPricingProps {
   onSelectionChange: (products: ProductWithPricing[]) => void
   promotionType: 'featured_products' | 'flash_sale'
   maxSelection?: number
+  storeId?: string // Add storeId prop for filtering products by store
 }
 
 export function ProductSelectorWithPricing({ 
   selectedProducts, 
   onSelectionChange, 
   promotionType,
-  maxSelection = 50
+  maxSelection = 50,
+  storeId: propStoreId // Rename to avoid conflict
 }: ProductSelectorWithPricingProps) {
   const { userStore } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
@@ -58,8 +60,8 @@ export function ProductSelectorWithPricing({
   const [loading, setLoading] = useState(false)
   const [showSelector, setShowSelector] = useState(false)
 
-  // Fetch products - using direct storeId to prevent infinite loops
-  const storeId = userStore?._id
+  // Use prop storeId if provided, otherwise fall back to user's store
+  const storeId = propStoreId || userStore?._id
 
   const fetchProducts = useCallback(async () => {
     const token = tokenStorage.getAccessToken()
@@ -67,12 +69,7 @@ export function ProductSelectorWithPricing({
 
     try {
       setLoading(true)
-      const response = await fetch(`/api/v1/products?storeId=${storeId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
+            const response = await fetch(`${API_BASE_URL}/products?store=${storeId}&limit=50`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch products')

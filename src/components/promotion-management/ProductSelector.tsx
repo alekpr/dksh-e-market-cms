@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { tokenStorage } from '@/lib/api'
+import { tokenStorage, API_BASE_URL } from '@/lib/api'
 
 interface Product {
   _id: string
@@ -31,13 +31,15 @@ interface ProductSelectorProps {
   onSelectionChange: (productIds: string[]) => void
   maxSelection?: number
   promotionType?: string
+  storeId?: string // Add storeId prop for filtering products by store
 }
 
 export function ProductSelector({ 
   selectedProducts, 
   onSelectionChange, 
   maxSelection = 50,
-  promotionType = 'featured_products'
+  promotionType = 'featured_products',
+  storeId // Add storeId to destructured props
 }: ProductSelectorProps) {
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
@@ -53,7 +55,14 @@ export function ProductSelector({
 
     try {
       setLoading(true)
-      const response = await fetch('/api/v1/products', {
+      // Build query parameters with store filtering
+      const queryParams = new URLSearchParams()
+      if (storeId) {
+        queryParams.append('store', storeId)
+      }
+      // Remove status=active filter to show all products
+      
+      const response = await fetch(`${API_BASE_URL}/products?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -72,7 +81,7 @@ export function ProductSelector({
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [storeId])
 
   // Filter products based on search
   useEffect(() => {
@@ -94,7 +103,7 @@ export function ProductSelector({
     if (showSelector) {
       fetchProducts()
     }
-  }, [showSelector, fetchProducts])
+  }, [showSelector, fetchProducts, storeId])
 
   // Fetch selected product details when selection changes
   useEffect(() => {
@@ -107,7 +116,7 @@ export function ProductSelector({
 
       try {
         const promises = selectedProducts.map(productId =>
-          fetch(`/api/v1/products/${productId}`, {
+          fetch(`${API_BASE_URL}/products/${productId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'

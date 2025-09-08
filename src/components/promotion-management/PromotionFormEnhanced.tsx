@@ -20,6 +20,7 @@ interface PromotionFormEnhancedProps {
   onSubmit: (data: CreatePromotionRequest | UpdatePromotionRequest) => Promise<void>
   onCancel: () => void
   loading?: boolean
+  storeId?: string // Add storeId prop for product filtering
 }
 
 // Options for selects - Only Flash Sale and Featured Products
@@ -51,7 +52,7 @@ const bannerPositions = [
   { value: 'footer', label: 'Footer Banner' }
 ]
 
-export function PromotionFormEnhanced({ promotion, onSubmit, onCancel, loading = false }: PromotionFormEnhancedProps) {
+export function PromotionFormEnhanced({ promotion, onSubmit, onCancel, loading = false, storeId }: PromotionFormEnhancedProps) {
   const [formData, setFormData] = useState({
     // Basic info
     title: promotion?.title || '',
@@ -408,6 +409,7 @@ export function PromotionFormEnhanced({ promotion, onSubmit, onCancel, loading =
                 onSelectionChange={handleProductSelectionChange}
                 maxSelection={formData.type === 'featured_products' ? formData.maxProducts : 50}
                 promotionType={formData.type}
+                storeId={storeId}
               />
             </CardContent>
           </Card>

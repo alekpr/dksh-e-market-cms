@@ -37,6 +37,7 @@ interface PromotionFormSimplifiedProps {
   onSubmit: (data: CreatePromotionRequest | UpdatePromotionRequest) => Promise<void>
   onCancel: () => void
   loading?: boolean
+  storeId?: string // Add storeId prop for product filtering
 }
 
 // Options for selects
@@ -52,7 +53,7 @@ const statusOptions = [
   { value: 'paused', label: 'Paused' }
 ]
 
-export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading = false }: PromotionFormSimplifiedProps) {
+export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading = false, storeId }: PromotionFormSimplifiedProps) {
   const [formData, setFormData] = useState({
     // Basic info
     title: promotion?.title || '',
@@ -415,6 +416,7 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
               onSelectionChange={handleProductSelectionChange}
               promotionType={formData.type}
               maxSelection={formData.type === 'featured_products' ? formData.maxProducts : 50}
+              storeId={storeId}
             />
           </CardContent>
         </Card>

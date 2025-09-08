@@ -9,6 +9,7 @@ import { PromotionList } from './PromotionList'
 import { PromotionDetail } from './PromotionDetail'
 import { PromotionFormSimplified } from './PromotionFormSimplified'
 import { usePromotionManagement } from './use-promotion-management'
+import { useAuth } from '@/contexts/AuthContext'
 import type { Promotion, CreatePromotionRequest, UpdatePromotionRequest } from '@/lib/api'
 
 type ViewMode = 'list' | 'create' | 'edit' | 'view'
@@ -16,6 +17,7 @@ type ViewMode = 'list' | 'create' | 'edit' | 'view'
 export function PromotionManagement() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null)
+  const { userStore } = useAuth()
   
   const {
     createPromotion,
@@ -105,6 +107,7 @@ export function PromotionManagement() {
               onSubmit={handleSubmit}
               onCancel={handleCancel}
               loading={saving}
+              storeId={userStore?._id}
             />
           </div>
         )
@@ -133,6 +136,7 @@ export function PromotionManagement() {
               onSubmit={handleSubmit}
               onCancel={handleCancel}
               loading={saving}
+              storeId={userStore?._id}
             />
           </div>
         )
