@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { MultiImageUpload } from "@/components/ui/image-upload"
 import { ArrowLeft, Save, X, Plus, Trash2, Package } from 'lucide-react'
 import type { Product, Category, Store } from '@/lib/api'
 import type { ProductFormData, ViewMode } from './use-product-management'
@@ -127,32 +128,6 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
         variants: formData.variants.filter((_, i) => i !== index)
       })
     }
-  }
-
-  // Handle image changes
-  const handleImageChange = (index: number, value: string) => {
-    const updatedImages = [...formData.images]
-    updatedImages[index] = value
-    onFormDataChange({
-      ...formData,
-      images: updatedImages.filter(img => img.trim() !== '')
-    })
-  }
-
-  // Add new image
-  const addImage = () => {
-    onFormDataChange({
-      ...formData,
-      images: [...formData.images, '']
-    })
-  }
-
-  // Remove image
-  const removeImage = (index: number) => {
-    onFormDataChange({
-      ...formData,
-      images: formData.images.filter((_, i) => i !== index)
-    })
   }
 
   // Handle category selection
@@ -450,49 +425,12 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
 
               <TabsContent value="media" className="space-y-6 mt-6">
                 {/* Images */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-lg font-medium">Product Images</Label>
-                    <Button type="button" variant="outline" onClick={addImage}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Image
-                    </Button>
-                  </div>
-
-                  {formData.images.map((image, index) => (
-                    <div key={index} className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <Label>Image URL {index + 1}</Label>
-                        <Input
-                          value={image}
-                          onChange={(e) => handleImageChange(index, e.target.value)}
-                          placeholder="https://example.com/image.jpg"
-                          type="url"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeImage(index)}
-                        className="mt-6"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-
-                  {formData.images.length === 0 && (
-                    <div className="text-center py-8 border border-dashed rounded-lg">
-                      <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No images added yet</p>
-                      <Button type="button" variant="outline" onClick={addImage} className="mt-2">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add First Image
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <MultiImageUpload
+                  images={formData.images}
+                  onChange={(images) => onFormDataChange({ ...formData, images })}
+                  maxImages={10}
+                  maxSize={5}
+                />
               </TabsContent>
 
               <TabsContent value="seo" className="space-y-6 mt-6">
