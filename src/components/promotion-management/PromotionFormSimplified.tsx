@@ -81,22 +81,34 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
   const initializeSelectedProducts = (): ProductWithPricing[] => {
     if (!promotion?.featuredProducts?.productIds) return []
     
-    return promotion.featuredProducts.productIds.map((product: any) => ({
-      product: {
-        _id: product._id || product,
-        name: product.name || '',
-        price: product.price || product.basePrice || 0,
-        basePrice: product.basePrice || product.price || 0,
-        sku: product.sku || '',
-        category: product.category,
-        images: product.images,
-        stock: product.stock
-      },
-      promotionalPrice: promotion.flashSale?.salePrice || product.price || 0,
-      discountType: 'percentage',
-      discountValue: 0,
-      isActive: true
-    }))
+    return promotion.featuredProducts.productIds.map((product: any) => {
+      // Try to get promotional price from metadata first
+      const productMetadata = promotion.metadata?.productPricing?.find(
+        (p: any) => p.productId === (product._id || product)
+      )
+      
+      const originalPrice = product.basePrice || product.price || 0
+      const promotionalPrice = productMetadata?.promotionalPrice || 
+                               promotion.flashSale?.salePrice || 
+                               originalPrice
+      
+      return {
+        product: {
+          _id: product._id || product,
+          name: product.name || '',
+          price: product.price || product.basePrice || 0,
+          basePrice: product.basePrice || product.price || 0,
+          sku: product.sku || '',
+          category: product.category,
+          images: product.images,
+          stock: product.stock
+        },
+        promotionalPrice: promotionalPrice,
+        discountType: productMetadata?.discountType || 'percentage',
+        discountValue: productMetadata?.discountValue || 0,
+        isActive: true
+      }
+    })
   }
 
   const [selectedProducts, setSelectedProducts] = useState<ProductWithPricing[]>(initializeSelectedProducts())

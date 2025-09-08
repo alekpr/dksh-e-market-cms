@@ -180,6 +180,7 @@ export function ProductSelectorWithPricing({
           </p>
         </div>
         <Button
+          type="button"
           variant="outline"
           onClick={() => setShowSelector(true)}
           className="flex items-center gap-2"
@@ -296,6 +297,7 @@ export function ProductSelectorWithPricing({
 
                   {/* Remove Button */}
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => handleRemoveProduct(item.product._id)}
@@ -323,6 +325,7 @@ export function ProductSelectorWithPricing({
                   </CardDescription>
                 </div>
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowSelector(false)}
@@ -430,12 +433,14 @@ export function ProductSelectorWithPricing({
             <div className="flex-shrink-0 p-6 border-t">
               <div className="flex justify-end gap-4">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => setShowSelector(false)}
                 >
                   Cancel
                 </Button>
                 <Button
+                  type="button"
                   onClick={() => setShowSelector(false)}
                 >
                   Done ({selectedProducts.length} selected)
