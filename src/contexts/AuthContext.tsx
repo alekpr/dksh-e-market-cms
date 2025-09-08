@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔍 Attempt 2: Fetching merchant store using /stores/merchant endpoint')
           
           // Direct fetch to bypass the storeApi abstraction, just to rule out any issues there
-          const merchantResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/stores/merchant`, {
+          const merchantResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1'}/stores/merchant`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -166,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!storeFound) {
         try {
           console.log('🔍 Attempt 4: Using debug endpoint as last resort')
-          const debugResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/debug/fix-store`, {
+          const debugResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1'}/debug/fix-store`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

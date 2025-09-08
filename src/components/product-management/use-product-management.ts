@@ -296,10 +296,13 @@ export const useProductManagement = () => {
   }
 
   const handleSave = async () => {
+    const isEditing = currentView === 'edit' && selectedProduct
+    
     try {
       setLoading(true)
-
-      const isEditing = currentView === 'edit' && selectedProduct
+      setError(null)
+      
+      console.log(`💾 ${isEditing ? 'Updating' : 'Creating'} product...`)
       
       // Transform formData to match API requirements
       const apiData = {
@@ -316,14 +319,22 @@ export const useProductManagement = () => {
         ? await productApi.updateProduct(selectedProduct._id, apiData as any)
         : await productApi.createProduct(apiData as any)
 
-      if (response.status === 'success') {
+      console.log(`✅ ${isEditing ? 'Update' : 'Create'} response:`, response)
+
+      // Backend returns {success: true} not {status: 'success'}
+      if (response.success === true || response.status === 'success') {
+        console.log('🔄 Refreshing product list...')
         await loadProducts()
         setCurrentView('list')
         setSelectedProduct(null)
+        console.log('✅ Product saved and list refreshed')
+      } else {
+        console.error('❌ Save response:', response)
+        setError(`Failed to ${isEditing ? 'update' : 'create'} product - unexpected response`)
       }
     } catch (err) {
-      console.error('Error saving product:', err)
-      setError('Failed to save product')
+      console.error(`❌ Error ${isEditing ? 'updating' : 'creating'} product:`, err)
+      setError(`Failed to ${isEditing ? 'update' : 'create'} product`)
     } finally {
       setLoading(false)
     }
@@ -332,12 +343,21 @@ export const useProductManagement = () => {
   const handleDelete = async (productId: string) => {
     try {
       setLoading(true)
+      console.log('🗑️ Deleting product:', productId)
       const response = await productApi.deleteProduct(productId)
-      if (response.status === 'success') {
+      console.log('✅ Delete response:', response)
+      
+      // Backend returns {success: true} not {status: 'success'}
+      if (response.success === true || response.status === 'success') {
+        console.log('🔄 Refreshing product list...')
         await loadProducts()
+        console.log('✅ Product list refreshed')
+      } else {
+        console.error('❌ Delete response:', response)
+        setError('Failed to delete product - unexpected response')
       }
     } catch (err) {
-      console.error('Error deleting product:', err)
+      console.error('❌ Error deleting product:', err)
       setError('Failed to delete product')
     } finally {
       setLoading(false)

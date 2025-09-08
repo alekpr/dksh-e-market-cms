@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
   };
 
   const isMerchant = getUserRole() === 'merchant';
-  const baseUrl = isMerchant ? 'http://localhost:3000/api/v1/analytics/merchant' : 'http://localhost:3000/api/v1/analytics';
+  const baseUrl = isMerchant ? 'http://54.251.126.43:3000/api/v1/analytics/merchant' : 'http://54.251.126.43:3000/api/v1/analytics';
 
   useEffect(() => {
     const fetchData = async () => {

@@ -2,7 +2,7 @@
  * API Client Configuration and Utilities
  */
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000'
 export const API_BASE_URL = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`
 
 // Types for API responses
@@ -881,7 +881,17 @@ class ApiClient {
       if (!response.ok) {
         // Extract detailed error message if available
         const errorMessage = data.message || data.error || `HTTP error! status: ${response.status}`
-        console.error('API Error Response:', data)
+        
+        // Enhanced logging for common scenarios
+        if (response.status === 404) {
+          console.warn(`🔍 Resource not found (404): ${url}`)
+          if (url.includes('/products/')) {
+            console.warn('💡 This might be because you switched to a different server with different data')
+          }
+        } else {
+          console.error('❌ API Error Response:', data)
+        }
+        
         const error = new Error(errorMessage)
         // Add response status and data to error for better handling
         ;(error as any).status = response.status

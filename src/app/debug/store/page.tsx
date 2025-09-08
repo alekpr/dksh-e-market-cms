@@ -13,7 +13,7 @@ export default function StoreDebugPage() {
   // Function to fix store access using debug endpoint
   const handleFixStore = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/debug/fix-store`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1'}/debug/fix-store`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ const hasValidStore = useMemo(() => {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/debug/store`, {
+                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1'}/debug/store`, {
                       headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                       }
@@ -223,7 +223,7 @@ const hasValidStore = useMemo(() => {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/stores/my-store`, {
+                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1'}/stores/my-store`, {
                       headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                       }
@@ -245,7 +245,7 @@ const hasValidStore = useMemo(() => {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/stores/merchant`, {
+                    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1'}/stores/merchant`, {
                       headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                       }
@@ -274,7 +274,7 @@ const hasValidStore = useMemo(() => {
                         return;
                       }
                       
-                      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/stores/${storeId}`, {
+                      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1'}/stores/${storeId}`, {
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                         }
