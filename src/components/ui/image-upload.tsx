@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { Upload, X, Image as ImageIcon, Link, Eye } from 'lucide-react'
+import { Upload, X, Image as ImageIcon, Link, Eye, AlertCircle, LogIn } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { uploadImageToServer } from '@/utils/imageUpload'
 import { getPlaceholderImage } from '@/utils/imageUtils'
+import { getPublicFileUrl } from '@/utils/fileUtils'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ImageUploadProps {
   value: string
@@ -30,11 +32,45 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [mode, setMode] = useState<'upload' | 'url'>('upload')
-  const [urlInput, setUrlInput] = useState(value || '')
+  const [urlInput, setUrlInput] = useState(typeof value === 'string' ? value : '')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { isAuthenticated, user, login } = useAuth()
+
+  // Helper function to get the correct image URL
+  const getImageUrl = (value: string): string => {
+    // Check if value is a valid string
+    if (!value || typeof value !== 'string') {
+      return ''
+    }
+    
+    // If it's already a full URL, use it as is
+    if (value.startsWith('http') || value.startsWith('data:')) {
+      return value
+    }
+    
+    // If it looks like a MongoDB ObjectId (24 hex characters), use public file URL
+    if (/^[0-9a-fA-F]{24}$/.test(value)) {
+      return getPublicFileUrl(value)
+    }
+    
+    // If it starts with /api, prepend the API base URL
+    if (value.startsWith('/api')) {
+      const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+      return `${apiUrl}${value}`
+    }
+    
+    // Otherwise, assume it's a file path/URL
+    return value
+  }
 
   // Handle file upload
   const handleFileUpload = async (file: File) => {
+    // Check authentication first
+    if (!isAuthenticated || !user) {
+      setUploadError('Please log in to upload images. You need to be authenticated to upload files.')
+      return
+    }
+
     // Validate file size
     if (file.size > maxSize * 1024 * 1024) {
       setUploadError(`File size must be less than ${maxSize}MB`)
@@ -124,19 +160,66 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
       {uploadError && (
         <Alert variant="destructive">
-          <AlertDescription>{uploadError}</AlertDescription>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {uploadError}
+            {uploadError.includes('log in') && (
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.href = '/login'}
+                  className="gap-2"
+                >
+                  <LogIn className="w-3 h-3" />
+                  Go to Login
+                </Button>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Authentication Warning */}
+      {!isAuthenticated && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            You need to be logged in to upload images.{' '}
+            <Button
+              type="button"
+              variant="link"
+              className="p-0 h-auto"
+              onClick={() => window.location.href = '/login'}
+            >
+              Please log in first.
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
 
       {mode === 'upload' && (
         <Card 
-          className="border-dashed border-2 hover:border-gray-400 transition-colors cursor-pointer"
-          onClick={() => fileInputRef.current?.click()}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
+          className={`border-dashed border-2 transition-colors cursor-pointer ${
+            !isAuthenticated 
+              ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
+              : 'hover:border-gray-400'
+          }`}
+          onClick={() => isAuthenticated && fileInputRef.current?.click()}
+          onDrop={isAuthenticated ? handleDrop : undefined}
+          onDragOver={isAuthenticated ? handleDragOver : undefined}
         >
           <CardContent className="flex flex-col items-center justify-center p-6 min-h-[120px]">
-            {uploading ? (
+            {!isAuthenticated ? (
+              <div className="text-center">
+                <LogIn className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">Login Required</p>
+                <p className="text-xs text-muted-foreground">
+                  Please log in to upload images
+                </p>
+              </div>
+            ) : uploading ? (
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                 <p className="text-sm text-muted-foreground">Uploading...</p>
@@ -177,17 +260,18 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         type="file"
         accept="image/*"
         onChange={handleFileChange}
+        disabled={!isAuthenticated}
         className="hidden"
       />
 
       {/* Preview */}
-      {value && preview && (
+      {value && preview && typeof value === 'string' && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-start gap-4">
               <div className="relative">
                 <img
-                  src={value}
+                  src={getImageUrl(value)}
                   alt="Preview"
                   className="w-20 h-20 object-cover rounded-lg border"
                   onError={(e) => {
@@ -213,7 +297,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(value, '_blank')}
+                    onClick={() => window.open(getImageUrl(value), '_blank')}
                   >
                     <Eye className="w-3 h-3 mr-1" />
                     Preview
@@ -247,7 +331,8 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
   // Add new image
   const handleAddImage = (url: string) => {
     if (images.length < maxImages) {
-      onChange([...images, url])
+      const newImages = [...images, url]
+      onChange(newImages)
     }
   }
 
@@ -273,7 +358,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
       </div>
 
       {/* Existing Images */}
-      {images.map((image, index) => (
+      {images.filter(image => image && typeof image === 'string').map((image, index) => (
         <ImageUpload
           key={index}
           value={image}

@@ -278,7 +278,10 @@ export const useProductManagement = () => {
         inventory: v.inventory,
         attributes: v.attributes || {}
       })),
-      images: product.images,
+      // Transform images to string array - handle both formats
+      images: product.images?.map(img => 
+        typeof img === 'string' ? img : img.url
+      ).filter(Boolean) || [],
       status: product.status,
       featured: product.featured,
       meta: {
@@ -308,6 +311,20 @@ export const useProductManagement = () => {
       const apiData = {
         ...formData,
         status: formData.status === 'deleted' ? 'archived' : formData.status,
+        // Transform images array from strings to objects with full URLs
+        images: formData.images.map((imageUrl: string, index: number) => {
+          // Convert relative URLs to full URLs
+          const fullUrl = imageUrl.startsWith('http') 
+            ? imageUrl 
+            : `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${imageUrl}`
+          
+          return {
+            url: fullUrl,
+            alt: `${formData.name || 'Product'} image ${index + 1}`,
+            position: index,
+            isMain: index === 0
+          }
+        }),
         variants: formData.variants.map((v, index) => ({
           ...v,
           _id: isEditing && selectedProduct?.variants[index]?._id || undefined,

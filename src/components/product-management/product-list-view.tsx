@@ -141,6 +141,24 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
     return { status: 'In Stock', color: 'text-green-600' }
   }
 
+  // Get image URL helper
+  const getImageUrl = (images: Product['images']) => {
+    if (!images || images.length === 0) return null
+    
+    const firstImage = images[0]
+    if (typeof firstImage === 'string') {
+      // If it's already a full URL, use it as is
+      if (firstImage.startsWith('http')) return firstImage
+      // If it's a relative URL, make it absolute
+      return `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${firstImage}`
+    }
+    
+    // If it's an object, get the URL property
+    const url = firstImage.url
+    if (url?.startsWith('http')) return url
+    return `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${url}`
+  }
+
   // Table columns for table view
   const columns: ColumnDef<Product>[] = [
     {
@@ -148,19 +166,23 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
       header: "Product",
       cell: ({ row }) => {
         const product = row.original
+        const imageUrl = getImageUrl(product.images)
         return (
           <div className="flex items-center space-x-3">
-            {product.images && product.images.length > 0 ? (
+            {imageUrl ? (
               <img
-                src={product.images[0]}
+                src={imageUrl}
                 alt={product.name}
                 className="h-10 w-10 rounded object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                }}
               />
-            ) : (
-              <div className="h-10 w-10 rounded bg-gray-200 flex items-center justify-center">
-                <Package className="h-5 w-5 text-gray-400" />
-              </div>
-            )}
+            ) : null}
+            <div className={`h-10 w-10 rounded bg-gray-200 flex items-center justify-center ${imageUrl ? 'hidden' : ''}`}>
+              <Package className="h-5 w-5 text-gray-400" />
+            </div>
             <div>
               <div className="font-medium">{product.name}</div>
               <div className="text-sm text-muted-foreground">

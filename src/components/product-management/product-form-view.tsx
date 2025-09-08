@@ -44,6 +44,21 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
   const isEditing = currentView === 'edit'
   const title = isEditing ? 'Edit Product' : 'Add New Product'
 
+  // Helper function to get image URL (handle both string and object formats)
+  const getImageUrl = (imageItem: string | {url: string; alt?: string; position?: number; isMain?: boolean}): string => {
+    if (typeof imageItem === 'string') {
+      // If it's already a full URL, use it as is
+      if (imageItem.startsWith('http')) return imageItem
+      // If it's a relative URL, make it absolute
+      return `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${imageItem}`
+    }
+    
+    // If it's an object, get the URL property
+    const url = imageItem.url
+    if (url?.startsWith('http')) return url
+    return `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${url}`
+  }
+
   // Handle form field changes
   const handleFieldChange = (field: string, value: any) => {
     if (field.startsWith('description.')) {
@@ -425,12 +440,16 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
 
               <TabsContent value="media" className="space-y-6 mt-6">
                 {/* Images */}
-                <MultiImageUpload
-                  images={formData.images}
-                  onChange={(images) => onFormDataChange({ ...formData, images })}
-                  maxImages={10}
-                  maxSize={5}
-                />
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Product Images</h3>
+                  
+                  <MultiImageUpload
+                    images={formData.images}
+                    onChange={(images) => onFormDataChange({ ...formData, images })}
+                    maxImages={10}
+                    maxSize={5}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="seo" className="space-y-6 mt-6">
@@ -509,7 +528,7 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
               <div className="flex items-center gap-3">
                 {formData.images.length > 0 && formData.images[0] ? (
                   <img 
-                    src={formData.images[0]} 
+                    src={getImageUrl(formData.images[0])} 
                     alt="Product preview" 
                     className="w-16 h-16 object-cover rounded-lg border"
                     onError={(e) => {
@@ -559,7 +578,7 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                 <span>Total Stock: {formData.variants.reduce((sum, v) => sum + v.inventory.quantity, 0)}</span>
                 <span className="mx-2">•</span>
                 <span>Images: {formData.images.filter(img => 
-                  typeof img === 'string' ? img.trim() : img && ((img as any).url || (img as any).src)
+                  img && (typeof img === 'string' ? img.trim() : (img as any).url)
                 ).length}</span>
               </div>
             </div>

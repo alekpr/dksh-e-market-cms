@@ -43,6 +43,21 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   onBack
 }) => {
   
+  // Helper function to get image URL (handle both string and object formats)
+  const getImageUrl = (imageItem: string | {url: string; alt?: string; position?: number; isMain?: boolean}): string => {
+    if (typeof imageItem === 'string') {
+      // If it's already a full URL, use it as is
+      if (imageItem.startsWith('http')) return imageItem
+      // If it's a relative URL, make it absolute
+      return `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${imageItem}`
+    }
+    
+    // If it's an object, get the URL property
+    const url = imageItem.url
+    if (url?.startsWith('http')) return url
+    return `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}${url}`
+  }
+  
   // Get status badge variant
   const getStatusBadge = (status: Product['status']): "default" | "secondary" | "outline" | "destructive" => {
     const variants = {
@@ -165,19 +180,30 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               <div className="space-y-4">
                 <div className="aspect-square w-full">
                   <img
-                    src={product.images[0]}
+                    src={getImageUrl(product.images[0])}
                     alt={product.name}
                     className="w-full h-full object-cover rounded-lg border"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                      const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder')
+                      if (placeholder) (placeholder as HTMLElement).style.display = 'flex'
+                    }}
                   />
+                  <div className="placeholder hidden aspect-square w-full bg-gray-100 rounded-lg items-center justify-center">
+                    <Package className="w-16 h-16 text-gray-400" />
+                  </div>
                 </div>
                 {product.images.length > 1 && (
                   <div className="grid grid-cols-3 gap-2">
                     {product.images.slice(1, 4).map((image, index) => (
                       <img
                         key={index}
-                        src={image}
+                        src={getImageUrl(image)}
                         alt={`${product.name} ${index + 2}`}
                         className="aspect-square w-full object-cover rounded border"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
                       />
                     ))}
                   </div>

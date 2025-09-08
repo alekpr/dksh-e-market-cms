@@ -267,7 +267,7 @@ export interface Product {
   store: Store | string;
   status: 'draft' | 'active' | 'archived' | 'deleted';
   featured: boolean;
-  images: string[]; // Standardize to string array only
+  images: Array<{url: string; alt?: string; position?: number; isMain?: boolean}> | string[]; // Support both formats
   hasVariants: boolean;
   variants: ProductVariant[];
   rating?: {
