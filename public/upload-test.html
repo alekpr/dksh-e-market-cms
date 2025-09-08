@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MultiImageUpload Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>MultiImageUpload Component Test</h1>
+    
+    <div class="debug">
+        <h3>Test Steps:</h3>
+        <ol>
+            <li>ไปที่ CMS: <a href="http://localhost:5173/products" target="_blank">http://localhost:5173/products</a></li>
+            <li>กดปุ่ม "Add Product"</li>
+            <li>เลือก Tab "Images"</li>
+            <li>ดูว่ามี MultiImageUpload แสดงไหม</li>
+            <li>เช็ค Console สำหรับ debug logs</li>
+        </ol>
+    </div>
+    
+    <div class="debug">
+        <h3>Expected Behavior:</h3>
+        <ul>
+            <li>ควรเห็น heading "Product Images"</li>
+            <li>ควรเห็น debug info แสดง formData.images</li>
+            <li>ควรเห็น "No images added yet" card</li>
+            <li>ควรเห็น "Add New Image" upload area</li>
+        </ul>
+    </div>
+    
+    <div class="debug">
+        <h3>Troubleshooting:</h3>
+        <ul>
+            <li>ถ้าไม่เห็น Tab "Images" → เช็ค TabsList rendering</li>
+            <li>ถ้าไม่เห็น MultiImageUpload → เช็ค import/export</li>
+            <li>ถ้าไม่เห็น ImageUpload → เช็ค authentication</li>
+            <li>ถ้า upload ไม่ได้ → เช็ค backend API</li>
+        </ul>
+    </div>
+    
+    <div class="debug">
+        <h3>Console Commands to Test:</h3>
+        <pre>
+// Check if user is authenticated
+localStorage.getItem('access_token')
+
+// Check API connection
+fetch('http://localhost:3000/api/v1/health')
+  .then(r => r.json())
+  .then(console.log)
+
+// Test upload endpoint
+fetch('http://localhost:3000/api/v1/upload/image', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+  }
+})
+.then(r => r.json())
+.then(console.log)
+        </pre>
+    </div>
+    
+    <div class="debug">
+        <h3>Backend Status:</h3>
+        <p>Backend API: <a href="http://localhost:3000/api/v1/health" target="_blank">http://localhost:3000/api/v1/health</a></p>
+        <p>Upload endpoint: POST http://localhost:3000/api/v1/upload/image</p>
+        <p>File serve endpoint: GET http://localhost:3000/api/v1/files/{id}/serve</p>
+    </div>
+</body>
+</html>

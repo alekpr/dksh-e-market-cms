@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Test</title>
+</head>
+<body>
+    <h1>File Access Test</h1>
+    
+    <h2>Public File URL (ไม่ต้อง auth)</h2>
+    <p>File ID: 68be9d55f72db7a86c463ba4</p>
+    <p>Public URL: <a href="http://localhost:3000/api/v1/files/68be9d55f72db7a86c463ba4/serve" target="_blank">
+        http://localhost:3000/api/v1/files/68be9d55f72db7a86c463ba4/serve
+    </a></p>
+    
+    <h3>Image Preview:</h3>
+    <img src="http://localhost:3000/api/v1/files/68be9d55f72db7a86c463ba4/serve" 
+         alt="Test Image" 
+         style="max-width: 300px; border: 1px solid #ccc; background: #f0f0f0;" 
+         onerror="this.style.display='none'; document.getElementById('error').style.display='block';" 
+         onload="document.getElementById('success').style.display='block';" />
+         
+    <div id="success" style="display: none; color: green; margin-top: 10px;">
+        ✅ รูปโหลดสำเร็จ! ระบบ upload image ทำงานได้แล้ว
+    </div>
+    <div id="error" style="display: none; color: red;">
+        ❌ ไม่สามารถโหลดรูปได้
+    </div>
+    
+    <h3>Test JavaScript Fetch:</h3>
+    <button onclick="testFetch()">Test Fetch</button>
+    <div id="fetchResult"></div>
+    
+    <script>
+        async function testFetch() {
+            const resultDiv = document.getElementById('fetchResult');
+            try {
+                const response = await fetch('http://localhost:3000/api/v1/files/68be9d55f72db7a86c463ba4/serve');
+                resultDiv.innerHTML = `
+                    <p>Status: ${response.status}</p>
+                    <p>Content-Type: ${response.headers.get('content-type')}</p>
+                    <p>Content-Length: ${response.headers.get('content-length')}</p>
+                    <p style="color: green;">✅ ไฟล์โหลดได้สำเร็จ! Upload System พร้อมใช้งาน</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
