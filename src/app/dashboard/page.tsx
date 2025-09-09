@@ -210,13 +210,6 @@ export default function DashboardPage() {
           color: "text-purple-600"
         },
         {
-          title: "Active Promotions",
-          value: stats.activePromotions,
-          description: stats.activePromotions > 0 ? "Running campaigns" : "No active promotions",
-          icon: Percent,
-          color: stats.activePromotions > 0 ? "text-red-600" : "text-gray-400"
-        },
-        {
           title: "Average Order",
           value: `฿${Math.round(stats.averageOrderValue).toLocaleString()}`,
           description: "Per order value",

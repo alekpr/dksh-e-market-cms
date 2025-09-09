@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:with-types": "tsc -b && vite build", 
+    "build:with-types": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -46,6 +46,7 @@
     "@tailwindcss/vite": "^4.1.11",
     "@tanstack/react-table": "^8.21.3",
     "@types/react-router-dom": "^5.3.3",
+    "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
