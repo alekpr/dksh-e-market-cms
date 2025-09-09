@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
 import { ROLE_DESCRIPTIONS, NAVIGATION_PERMISSIONS, type UserRole } from "@/lib/constants/roles"
-import { API_BASE_URL } from "@/lib/api"
+import { API_BASE_URL, promotionApi } from "@/lib/api"
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -64,6 +64,7 @@ export default function DashboardPage() {
     totalProductsSold: 0
   })
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
+  const [recentPromotions, setRecentPromotions] = useState<any[]>([])
 
   const userRole = user?.role as UserRole
   const roleDescription = userRole ? ROLE_DESCRIPTIONS[userRole] : null
@@ -104,24 +105,35 @@ export default function DashboardPage() {
           'Content-Type': 'application/json'
         }
 
-        // Fetch multiple endpoints in parallel
-        const [summaryRes, inventoryRes, productsRes, promotionsRes, ordersRes] = await Promise.all([
+        // Fetch multiple endpoints in parallel - using merchant-specific routes
+        const [summaryRes, inventoryRes, productsRes, ordersRes] = await Promise.all([
           fetch(`${API_BASE_URL}/analytics/merchant/summary`, { headers }),
           fetch(`${API_BASE_URL}/analytics/merchant/inventory`, { headers }),
           fetch(`${API_BASE_URL}/products?store=${user?.merchantInfo?.storeId}&status=active&limit=1`, { headers }),
-          fetch(`${API_BASE_URL}/promotions?limit=1`, { headers }),
           fetch(`${API_BASE_URL}/stores/${user?.merchantInfo?.storeId}/orders?limit=5&sortBy=createdAt&sortOrder=desc`, { headers })
         ])
 
-        const [summaryData, inventoryData, productsData, promotionsData, ordersData] = await Promise.all([
+        // Use promotionApi for merchant-specific promotion filtering
+        const promotionsPromise = promotionApi.getPromotions({ limit: 100, active: true })
+
+        const [summaryData, inventoryData, productsData, ordersData, promotionsData] = await Promise.all([
           summaryRes.json(),
           inventoryRes.json(),
           productsRes.json(),
-          promotionsRes.json(),
-          ordersRes.json()
+          ordersRes.json(),
+          promotionsPromise
         ])
 
-        console.log('Dashboard API Data:', { summaryData, inventoryData, productsData, promotionsData, ordersData })
+        console.log('📊 Dashboard API Data:', { 
+          summaryData, 
+          inventoryData, 
+          productsData, 
+          promotionsData: {
+            total: promotionsData.data?.pagination?.total || promotionsData.data?.results || 0,
+            promotionsCount: (promotionsData.data as any)?.promotions?.length || 0
+          }, 
+          ordersData 
+        })
 
         // Extract stats from API responses
         const summary = summaryData.data?.summary || {}
@@ -131,7 +143,7 @@ export default function DashboardPage() {
           totalRevenue: summary.totalRevenue || 0,
           totalOrders: summary.totalOrders || 0,
           totalProducts: productsData.pagination?.total || 0,
-          activePromotions: promotionsData.pagination?.total || 0,
+          activePromotions: promotionsData.data?.pagination?.total || promotionsData.data?.results || 0,
           lowStockProducts: inventory.lowStockProducts || 0,
           outOfStockProducts: inventory.outOfStockProducts || 0,
           averageOrderValue: summary.averageOrderValue || 0,
@@ -140,6 +152,9 @@ export default function DashboardPage() {
 
         // Set recent orders
         setRecentOrders(ordersData.data || [])
+
+        // Set recent promotions
+        setRecentPromotions((promotionsData.data as any)?.promotions || [])
 
       } catch (error) {
         console.error('Error fetching merchant data:', error)
@@ -197,9 +212,9 @@ export default function DashboardPage() {
         {
           title: "Active Promotions",
           value: stats.activePromotions,
-          description: "Running campaigns",
+          description: stats.activePromotions > 0 ? "Running campaigns" : "No active promotions",
           icon: Percent,
-          color: "text-red-600"
+          color: stats.activePromotions > 0 ? "text-red-600" : "text-gray-400"
         },
         {
           title: "Average Order",
@@ -372,48 +387,102 @@ export default function DashboardPage() {
             )}
 
             {/* Recent Activity for Merchants */}
-            {isMerchant && recentOrders.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Recent Orders
-                  </CardTitle>
-                  <CardDescription>
-                    Latest orders from your store
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentOrders.slice(0, 5).map((order) => (
-                      <div key={order._id} className="flex items-center gap-3 p-3 border rounded-lg">
-                        <ShoppingCart className={`h-4 w-4 ${
-                          order.status === 'completed' ? 'text-green-600' :
-                          order.status === 'pending' ? 'text-yellow-600' :
-                          order.status === 'cancelled' ? 'text-red-600' :
-                          'text-blue-600'
-                        }`} />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">
-                            Order #{order._id.slice(-8)} - ฿{order.totalAmount.toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {order.status} • {new Date(order.createdAt).toLocaleDateString()} • {order.items?.length || 0} items
-                          </p>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {order.status}
-                        </span>
+            {isMerchant && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Recent Orders */}
+                {recentOrders.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <ShoppingCart className="h-5 w-5" />
+                        Recent Orders
+                      </CardTitle>
+                      <CardDescription>
+                        Latest orders from your store
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {recentOrders.slice(0, 5).map((order) => (
+                          <div key={order._id} className="flex items-center gap-3 p-3 border rounded-lg">
+                            <ShoppingCart className={`h-4 w-4 ${
+                              order.status === 'completed' ? 'text-green-600' :
+                              order.status === 'pending' ? 'text-yellow-600' :
+                              order.status === 'cancelled' ? 'text-red-600' :
+                              'text-blue-600'
+                            }`} />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">
+                                Order #{order._id.slice(-8)} - ฿{order.totalAmount.toLocaleString()}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {order.status} • {new Date(order.createdAt).toLocaleDateString()} • {order.items?.length || 0} items
+                              </p>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Recent Promotions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Percent className="h-5 w-5" />
+                      Active Promotions
+                    </CardTitle>
+                    <CardDescription>
+                      Your store's current promotions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {recentPromotions.length > 0 ? (
+                      <div className="space-y-4">
+                        {recentPromotions.slice(0, 3).map((promotion) => (
+                          <div key={promotion._id} className="flex items-center gap-3 p-3 border rounded-lg">
+                            <Percent className={`h-4 w-4 ${
+                              promotion.status === 'active' ? 'text-green-600' :
+                              promotion.status === 'scheduled' ? 'text-blue-600' :
+                              'text-gray-600'
+                            }`} />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{promotion.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {promotion.type} • {promotion.discountType === 'percentage' ? `${promotion.discountValue}%` : `฿${promotion.discountValue}`} off
+                              </p>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              promotion.status === 'active' ? 'bg-green-100 text-green-800' :
+                              promotion.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {promotion.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Percent className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-sm text-muted-foreground">No active promotions</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Create promotions to boost your sales
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {/* Recent Activity for Admin */}
