@@ -1686,6 +1686,17 @@ export const promotionApi = {
     }
     
     const query = queryParams.toString()
+    
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant${query ? `?${query}` : ''}` 
+      : `/promotions${query ? `?${query}` : ''}`
+    
+    console.log(`🎯 Using promotion endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.get<{
       success: boolean;
       results: number;
@@ -1696,10 +1707,10 @@ export const promotionApi = {
         pages: number;
       };
       data: { promotions: Promotion[] };
-    }>(`/promotions${query ? `?${query}` : ''}`)
+    }>(endpoint)
   },
 
-  // Get active promotions (public endpoint)
+  // Get active promotions (role-based endpoint)
   getActivePromotions: (params?: {
     type?: string;
     storeId?: string;
@@ -1713,14 +1724,25 @@ export const promotionApi = {
     if (params?.position) queryParams.append('position', params.position)
     
     const query = queryParams.toString()
+    
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/active${query ? `?${query}` : ''}` 
+      : `/promotions/active${query ? `?${query}` : ''}`
+    
+    console.log(`🎯 Using active promotions endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.get<{
       success: boolean;
       results: number;
       data: { promotions: Promotion[] };
-    }>(`/promotions/active${query ? `?${query}` : ''}`)
+    }>(endpoint)
   },
 
-  // Get featured products
+  // Get featured products (role-based endpoint)
   getFeaturedProducts: (params?: {
     limit?: number;
     storeId?: string;
@@ -1732,14 +1754,25 @@ export const promotionApi = {
     if (params?.categoryId) queryParams.append('categoryId', params.categoryId)
     
     const query = queryParams.toString()
+    
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/featured-products${query ? `?${query}` : ''}` 
+      : `/promotions/featured-products${query ? `?${query}` : ''}`
+    
+    console.log(`🎯 Using featured products endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.get<{
       success: boolean;
       results: number;
       data: { products: Product[] };
-    }>(`/promotions/featured-products${query ? `?${query}` : ''}`)
+    }>(endpoint)
   },
 
-  // Get flash sales
+  // Get flash sales (role-based endpoint)
   getFlashSales: (params?: {
     limit?: number;
     upcoming?: boolean;
@@ -1749,14 +1782,25 @@ export const promotionApi = {
     if (params?.upcoming) queryParams.append('upcoming', params.upcoming.toString())
     
     const query = queryParams.toString()
+    
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/flash-sales${query ? `?${query}` : ''}` 
+      : `/promotions/flash-sales${query ? `?${query}` : ''}`
+    
+    console.log(`🎯 Using flash sales endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.get<{
       success: boolean;
       results: number;
       data: { flashSales: Promotion[] };
-    }>(`/promotions/flash-sales${query ? `?${query}` : ''}`)
+    }>(endpoint)
   },
 
-  // Get promotional banners
+  // Get promotional banners (role-based endpoint)
   getPromotionalBanners: (params?: {
     position?: string;
     limit?: number;
@@ -1766,67 +1810,146 @@ export const promotionApi = {
     if (params?.limit) queryParams.append('limit', params.limit.toString())
     
     const query = queryParams.toString()
+    
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/banners${query ? `?${query}` : ''}` 
+      : `/promotions/banners${query ? `?${query}` : ''}`
+    
+    console.log(`🎯 Using promotional banners endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.get<{
       success: boolean;
       results: number;
       data: { banners: Promotion[] };
-    }>(`/promotions/banners${query ? `?${query}` : ''}`)
+    }>(endpoint)
   },
 
   // Get single promotion by ID
   getPromotion: (id: string) => {
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/${id}` 
+      : `/promotions/${id}`
+    
+    console.log(`🎯 Using promotion detail endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.get<{
       success: boolean;
       data: { promotion: Promotion };
-    }>(`/promotions/${id}`)
+    }>(endpoint)
   },
 
   // Create new promotion
   createPromotion: (data: CreatePromotionRequest) => {
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? '/promotions/merchant' 
+      : '/promotions'
+    
+    console.log(`🎯 Using promotion create endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.post<{
       success: boolean;
       data: { promotion: Promotion };
-    }>('/promotions', data)
+    }>(endpoint, data)
   },
 
   // Update promotion
   updatePromotion: (id: string, data: UpdatePromotionRequest) => {
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/${id}` 
+      : `/promotions/${id}`
+    
+    console.log(`🎯 Using promotion update endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.patch<{
       success: boolean;
       data: { promotion: Promotion };
-    }>(`/promotions/${id}`, data)
+    }>(endpoint, data)
   },
 
   // Delete promotion
   deletePromotion: (id: string) => {
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/${id}` 
+      : `/promotions/${id}`
+    
+    console.log(`🎯 Using promotion delete endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.delete<{
       success: boolean;
       data: null;
-    }>(`/promotions/${id}`)
+    }>(endpoint)
   },
 
   // Toggle promotion status (activate/deactivate)
   togglePromotionStatus: (id: string) => {
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/${id}/toggle-status` 
+      : `/promotions/${id}/toggle-status`
+    
+    console.log(`🎯 Using promotion toggle endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.patch<{
       success: boolean;
       data: { promotion: Promotion; message: string };
-    }>(`/promotions/${id}/toggle-status`)
+    }>(endpoint)
   },
 
   // Track promotion event (view/click)
   trackPromotionEvent: (id: string, eventType: 'view' | 'click') => {
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? `/promotions/merchant/${id}/track` 
+      : `/promotions/${id}/track`
+    
     return apiClient.post<{
       success: boolean;
       data: { analytics: PromotionAnalytics };
-    }>(`/promotions/${id}/track`, { eventType })
+    }>(endpoint, { eventType })
   },
 
   // Get promotion statistics (admin only)
   getPromotionStats: () => {
+    // Get current user from token storage to determine endpoint
+    const user = tokenStorage.getUser()
+    const isMerchant = user?.role === 'merchant'
+    
+    const endpoint = isMerchant 
+      ? '/promotions/merchant/stats' 
+      : '/promotions/stats'
+    
+    console.log(`🎯 Using promotion stats endpoint: ${endpoint} (role: ${user?.role})`)
+    
     return apiClient.get<{
       success: boolean;
       data: PromotionStats;
-    }>('/promotions/stats')
+    }>(endpoint)
   },
 
   // Calculate discount for items
