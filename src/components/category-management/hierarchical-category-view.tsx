@@ -503,10 +503,10 @@ export const HierarchicalCategoryView: React.FC<HierarchicalCategoryViewProps> =
                   )}
                   
                   <Select
-                    value={typeof category.parent === 'string' ? category.parent : category.parent?._id || ""}
+                    value={typeof category.parent === 'string' ? category.parent : category.parent?._id || "no-master"}
                     onValueChange={(masterId) => {
                       console.log('Assigning category:', category._id, 'to master:', masterId)
-                      if (masterId === '') {
+                      if (masterId === 'no-master') {
                         // Remove from master
                         removeFromMaster(category._id)
                       } else {
@@ -518,7 +518,7 @@ export const HierarchicalCategoryView: React.FC<HierarchicalCategoryViewProps> =
                       <SelectValue placeholder="Assign to master" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Master (Orphan)</SelectItem>
+                      <SelectItem value="no-master">No Master (Orphan)</SelectItem>
                       {masterCategories.map((master) => (
                         <SelectItem key={master._id} value={master._id}>
                           {master.name}
