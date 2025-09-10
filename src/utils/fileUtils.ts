@@ -5,9 +5,31 @@
 /**
  * Get public file URL that doesn't require authentication
  */
-export function getPublicFileUrl(fileId: string): string {
-  const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
-  return `${apiUrl}/api/v1/files/${fileId}/serve`
+export function getPublicFileUrl(fileIdOrPath: string): string {
+  // Use VITE_API_BASE_URL if available (includes /api/v1), otherwise use VITE_API_URL
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  
+  // Check if fileIdOrPath is already a full path (starts with /api/v1/files/)
+  if (fileIdOrPath.startsWith('/api/v1/files/')) {
+    // It's already a full API path, just prepend the base URL
+    if (apiBaseUrl) {
+      // Remove /api/v1 from the start since apiBaseUrl already includes it
+      const pathWithoutApiV1 = fileIdOrPath.replace('/api/v1', '')
+      return `${apiBaseUrl}${pathWithoutApiV1}`
+    } else {
+      return `${apiUrl}${fileIdOrPath}`
+    }
+  }
+  
+  // It's just a fileId, build the full path
+  if (apiBaseUrl) {
+    // VITE_API_BASE_URL already includes /api/v1
+    return `${apiBaseUrl}/files/${fileIdOrPath}/serve`
+  } else {
+    // VITE_API_URL is base URL only
+    return `${apiUrl}/api/v1/files/${fileIdOrPath}/serve`
+  }
 }
 
 /**

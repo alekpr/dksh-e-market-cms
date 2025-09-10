@@ -219,6 +219,88 @@ export const useHierarchicalCategories = () => {
     }
   }
 
+  // Update master category
+  const updateMasterCategory = async (masterId: string) => {
+    if (!canManageMaster) {
+      toast.error('Access denied: Admin role required')
+      return
+    }
+
+    if (!masterFormData.name.trim()) {
+      toast.error('Category name is required')
+      return
+    }
+
+    try {
+      setLoading(true)
+      
+      const categoryData = {
+        name: masterFormData.name.trim(),
+        description: masterFormData.description.trim() || undefined,
+        image: masterFormData.image.trim() || undefined,
+        icon: masterFormData.icon.trim() || undefined,
+        order: masterFormData.order,
+        meta: {
+          title: masterFormData.meta.title.trim() || undefined,
+          description: masterFormData.meta.description.trim() || undefined,
+          keywords: masterFormData.meta.keywords.trim() || undefined
+        }
+      }
+
+      const response = await categoryApi.updateCategory(masterId, categoryData)
+      
+      if (response.success) {
+        toast.success('Master category updated successfully')
+        setShowMasterForm(false)
+        resetMasterForm()
+        fetchMasterCategories()
+        // Refresh hierarchical data if needed
+        if (viewMode === 'hierarchical') {
+          fetchHierarchicalData()
+        }
+      } else {
+        throw new Error(response.message || 'Failed to update master category')
+      }
+    } catch (error: any) {
+      console.error('Failed to update master category:', error)
+      toast.error(error.message || 'Failed to update master category')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Delete master category
+  const deleteMasterCategory = async (masterId: string) => {
+    if (!canManageMaster) {
+      toast.error('Access denied: Admin role required')
+      return
+    }
+
+    try {
+      setLoading(true)
+      
+      const response = await categoryApi.deleteCategory(masterId)
+      
+      if (response.success) {
+        toast.success('Master category deleted successfully')
+        fetchMasterCategories()
+        // Refresh hierarchical data if needed
+        if (viewMode === 'hierarchical') {
+          fetchHierarchicalData()
+        }
+        // Refresh store categories as they might be affected
+        fetchStoreCategories()
+      } else {
+        throw new Error(response.message || 'Failed to delete master category')
+      }
+    } catch (error: any) {
+      console.error('Failed to delete master category:', error)
+      toast.error(error.message || 'Failed to delete master category')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Assign store category to master
   const assignToMaster = async (storeCategoryId: string, masterCategoryId: string) => {
     // Admin can assign any store category, merchant can only assign their own
@@ -380,6 +462,8 @@ export const useHierarchicalCategories = () => {
     
     // Actions
     createMasterCategory,
+    updateMasterCategory,
+    deleteMasterCategory,
     assignToMaster,
     removeFromMaster,
     resetMasterForm,
