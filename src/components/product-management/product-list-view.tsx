@@ -234,6 +234,43 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
       },
     },
     {
+      accessorKey: "variants",
+      header: "Package Types",
+      cell: ({ row }) => {
+        const product = row.original
+        const packageTypes = product.variants
+          .map((v: any) => {
+            if (v.packageType && v.packageUnit && v.packageQuantity) {
+              return `${v.packageQuantity} ${v.packageUnit}`
+            }
+            return null
+          })
+          .filter(Boolean)
+          .slice(0, 3) // Show max 3 package types
+        
+        return (
+          <div className="space-y-1">
+            {packageTypes.length > 0 ? (
+              <>
+                {packageTypes.map((pkg, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {pkg}
+                  </Badge>
+                ))}
+                {product.variants.length > 3 && (
+                  <Badge variant="secondary" className="text-xs">
+                    +{product.variants.length - 3}
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">No packages</span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
       accessorKey: "inventory",
       header: "Stock",
       cell: ({ row }) => {

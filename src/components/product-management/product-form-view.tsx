@@ -124,6 +124,9 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
           name: `Variant ${formData.variants.length + 1}`,
           sku: '',
           price: formData.basePrice,
+          packageType: 'piece',
+          packageUnit: 'ชิ้น',
+          packageQuantity: 1,
           inventory: {
             quantity: 0,
             trackInventory: true,
@@ -401,6 +404,58 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                           </div>
                         </div>
 
+                        {/* Package Type Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          <div className="space-y-2">
+                            <Label className="text-blue-700 font-medium">Package Type</Label>
+                            <Select 
+                              value={(variant as any).packageType || 'piece'} 
+                              onValueChange={(value) => handleVariantChange(index, 'packageType', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select package type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="piece">Piece (ชิ้น)</SelectItem>
+                                <SelectItem value="box">Box (กล่อง)</SelectItem>
+                                <SelectItem value="pack">Pack (แพ็ค)</SelectItem>
+                                <SelectItem value="bottle">Bottle (ขวด)</SelectItem>
+                                <SelectItem value="bag">Bag (ถุง)</SelectItem>
+                                <SelectItem value="case">Case (ลัง)</SelectItem>
+                                <SelectItem value="carton">Carton (แคร์ตัน)</SelectItem>
+                                <SelectItem value="unit">Unit (หน่วย)</SelectItem>
+                                <SelectItem value="set">Set (ชุด)</SelectItem>
+                                <SelectItem value="kg">Kilogram (กิโลกรัม)</SelectItem>
+                                <SelectItem value="gram">Gram (กรัม)</SelectItem>
+                                <SelectItem value="liter">Liter (ลิตร)</SelectItem>
+                                <SelectItem value="ml">Milliliter (มิลลิลิตร)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-blue-700 font-medium">Package Unit (Display)</Label>
+                            <Input
+                              value={(variant as any).packageUnit || ''}
+                              onChange={(e) => handleVariantChange(index, 'packageUnit', e.target.value)}
+                              placeholder="e.g., ชิ้น, กล่อง, แพ็ค"
+                            />
+                            <p className="text-xs text-muted-foreground">Thai display name for this package</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label className="text-blue-700 font-medium">Package Quantity</Label>
+                            <Input
+                              type="number"
+                              value={(variant as any).packageQuantity || 1}
+                              onChange={(e) => handleVariantChange(index, 'packageQuantity', parseInt(e.target.value) || 1)}
+                              placeholder="1"
+                              min="1"
+                            />
+                            <p className="text-xs text-muted-foreground">Number of units in this package</p>
+                          </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-2">
                             <Label>Quantity</Label>
@@ -581,6 +636,22 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                   img && (typeof img === 'string' ? img.trim() : (img as any).url)
                 ).length}</span>
               </div>
+              
+              {/* Package Types Summary */}
+              {formData.variants.some(v => (v as any).packageType) && (
+                <div className="mt-3 pt-3 border-t">
+                  <div className="text-sm font-medium text-blue-700 mb-2">Package Types Available:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {formData.variants
+                      .filter(v => (v as any).packageType && (v as any).packageUnit)
+                      .map((variant, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                          {(variant as any).packageQuantity} {(variant as any).packageUnit} • {formatPrice(variant.price)}
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

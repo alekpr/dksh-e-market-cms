@@ -349,6 +349,43 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                         )}
                       </div>
                     </div>
+
+                    {/* Package Type Information */}
+                    {((variant as any).packageType || (variant as any).packageUnit || (variant as any).packageQuantity) && (
+                      <div className="mt-3 pt-3 border-t bg-blue-50 rounded-lg p-3">
+                        <span className="text-sm font-medium text-blue-700 mb-2 block">Package Information:</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {(variant as any).packageType && (
+                            <div>
+                              <span className="text-xs text-blue-600">Package Type</span>
+                              <p className="text-sm font-medium">{(variant as any).packageType}</p>
+                            </div>
+                          )}
+                          
+                          {(variant as any).packageUnit && (
+                            <div>
+                              <span className="text-xs text-blue-600">Display Unit</span>
+                              <p className="text-sm font-medium">{(variant as any).packageUnit}</p>
+                            </div>
+                          )}
+                          
+                          {(variant as any).packageQuantity && (
+                            <div>
+                              <span className="text-xs text-blue-600">Quantity per Package</span>
+                              <p className="text-sm font-medium">{(variant as any).packageQuantity}</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {(variant as any).packageType && (variant as any).packageUnit && (variant as any).packageQuantity && (
+                          <div className="mt-2 pt-2 border-t border-blue-200">
+                            <Badge variant="outline" className="bg-blue-100 text-blue-700">
+                              {(variant as any).packageQuantity} {(variant as any).packageUnit} • {formatPrice(variant.price)}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {variant.attributes && Object.keys(variant.attributes).length > 0 && (
                       <div className="mt-3 pt-3 border-t">

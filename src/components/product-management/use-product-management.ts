@@ -17,6 +17,9 @@ export interface ProductFormData {
     name: string
     sku: string
     price: number
+    packageType?: string
+    packageUnit?: string
+    packageQuantity?: number
     inventory: {
       quantity: number
       trackInventory: boolean
@@ -242,6 +245,9 @@ export const useProductManagement = () => {
         name: 'Default',
         sku: '',
         price: 0,
+        packageType: 'piece',
+        packageUnit: 'ชิ้น',
+        packageQuantity: 1,
         inventory: {
           quantity: 0,
           trackInventory: true,
@@ -275,6 +281,9 @@ export const useProductManagement = () => {
         name: v.name,
         sku: v.sku || '',
         price: v.price,
+        packageType: (v as any).packageType || 'piece',
+        packageUnit: (v as any).packageUnit || 'ชิ้น',
+        packageQuantity: (v as any).packageQuantity || 1,
         inventory: v.inventory,
         attributes: v.attributes || {}
       })),
