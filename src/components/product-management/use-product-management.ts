@@ -20,6 +20,16 @@ export interface ProductFormData {
     packageType?: string
     packageUnit?: string
     packageQuantity?: number
+    weight?: {
+      value: number
+      unit: string
+    }
+    dimensions?: {
+      length: number
+      width: number
+      height: number
+      unit: string
+    }
     inventory: {
       quantity: number
       trackInventory: boolean
@@ -248,6 +258,8 @@ export const useProductManagement = () => {
         packageType: 'piece',
         packageUnit: 'ชิ้น',
         packageQuantity: 1,
+        weight: { value: 0, unit: 'gram' },
+        dimensions: { length: 0, width: 0, height: 0, unit: 'cm' },
         inventory: {
           quantity: 0,
           trackInventory: true,
@@ -284,6 +296,9 @@ export const useProductManagement = () => {
         packageType: (v as any).packageType || 'piece',
         packageUnit: (v as any).packageUnit || 'ชิ้น',
         packageQuantity: (v as any).packageQuantity || 1,
+        // Add weight and dimensions mapping
+        weight: (v as any).weight || { value: 0, unit: 'gram' },
+        dimensions: (v as any).dimensions || { length: 0, width: 0, height: 0, unit: 'cm' },
         inventory: v.inventory,
         attributes: v.attributes || {}
       })),

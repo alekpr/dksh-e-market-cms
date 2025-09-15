@@ -101,6 +101,24 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
           [invField]: value
         }
       }
+    } else if (field.startsWith('weight.')) {
+      const weightField = field.replace('weight.', '')
+      updatedVariants[index] = {
+        ...updatedVariants[index],
+        weight: {
+          ...(updatedVariants[index] as any).weight,
+          [weightField]: value
+        }
+      } as any
+    } else if (field.startsWith('dimensions.')) {
+      const dimensionField = field.replace('dimensions.', '')
+      updatedVariants[index] = {
+        ...updatedVariants[index],
+        dimensions: {
+          ...(updatedVariants[index] as any).dimensions,
+          [dimensionField]: value
+        }
+      } as any
     } else {
       updatedVariants[index] = {
         ...updatedVariants[index],
@@ -132,8 +150,18 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
             trackInventory: true,
             lowStockThreshold: 5
           },
+          weight: {
+            value: 0,
+            unit: 'g'
+          },
+          dimensions: {
+            length: 0,
+            width: 0,
+            height: 0,
+            unit: 'cm'
+          },
           attributes: {}
-        }
+        } as any
       ]
     })
   }
@@ -453,6 +481,105 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                               min="1"
                             />
                             <p className="text-xs text-muted-foreground">Number of units in this package</p>
+                          </div>
+                        </div>
+
+                        {/* Weight and Dimensions Section */}
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200 space-y-4">
+                          <h4 className="text-green-700 font-medium">Weight & Dimensions (for Shipping Calculation)</h4>
+                          
+                          {/* Weight Section */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-green-700 font-medium">Weight</Label>
+                              <Input
+                                type="number"
+                                value={(variant as any).weight?.value || ''}
+                                onChange={(e) => handleVariantChange(index, 'weight.value', parseFloat(e.target.value) || 0)}
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label className="text-green-700 font-medium">Weight Unit</Label>
+                              <Select 
+                                value={(variant as any).weight?.unit || 'g'} 
+                                onValueChange={(value) => handleVariantChange(index, 'weight.unit', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select weight unit" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="g">Gram (กรัม)</SelectItem>
+                                  <SelectItem value="kg">Kilogram (กิโลกรัม)</SelectItem>
+                                  <SelectItem value="lb">Pound (ปอนด์)</SelectItem>
+                                  <SelectItem value="oz">Ounce (ออนซ์)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Dimensions Section */}
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-green-700 font-medium">Length (ความยาว)</Label>
+                                <Input
+                                  type="number"
+                                  value={(variant as any).dimensions?.length || ''}
+                                  onChange={(e) => handleVariantChange(index, 'dimensions.length', parseFloat(e.target.value) || 0)}
+                                  placeholder="0.00"
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label className="text-green-700 font-medium">Width (ความกว้าง)</Label>
+                                <Input
+                                  type="number"
+                                  value={(variant as any).dimensions?.width || ''}
+                                  onChange={(e) => handleVariantChange(index, 'dimensions.width', parseFloat(e.target.value) || 0)}
+                                  placeholder="0.00"
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label className="text-green-700 font-medium">Height (ความสูง)</Label>
+                                <Input
+                                  type="number"
+                                  value={(variant as any).dimensions?.height || ''}
+                                  onChange={(e) => handleVariantChange(index, 'dimensions.height', parseFloat(e.target.value) || 0)}
+                                  placeholder="0.00"
+                                  min="0"
+                                  step="0.01"
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label className="text-green-700 font-medium">Dimension Unit</Label>
+                                <Select 
+                                  value={(variant as any).dimensions?.unit || 'cm'} 
+                                  onValueChange={(value) => handleVariantChange(index, 'dimensions.unit', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select dimension unit" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cm">Centimeter (เซนติเมตร)</SelectItem>
+                                    <SelectItem value="in">Inch (นิ้ว)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            
+                            <p className="text-xs text-green-600">
+                              📦 ข้อมูลเหล่านี้จะใช้ในการคำนวณค่าส่งสินค้าร่วมกับระยะทางของผู้ซื้อกับร้านค้า
+                            </p>
                           </div>
                         </div>
 

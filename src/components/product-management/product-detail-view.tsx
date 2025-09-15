@@ -386,7 +386,45 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                         )}
                       </div>
                     )}
-                    
+
+                    {/* Weight & Dimensions Information */}
+                    {((variant as any).weight || (variant as any).dimensions) && (
+                      <div className="mt-3 pt-3 border-t bg-green-50 rounded-lg p-3">
+                        <span className="text-sm font-medium text-green-700 mb-2 block">📦 Weight & Dimensions (Shipping):</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {(variant as any).weight && (variant as any).weight.value > 0 && (
+                            <div>
+                              <span className="text-xs text-green-600">Weight</span>
+                              <p className="text-sm font-medium">
+                                {(variant as any).weight.value} {(variant as any).weight.unit === 'gram' ? 'g' : (variant as any).weight.unit}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {(variant as any).dimensions && (
+                            (variant as any).dimensions.length > 0 || 
+                            (variant as any).dimensions.width > 0 || 
+                            (variant as any).dimensions.height > 0
+                          ) && (
+                            <div>
+                              <span className="text-xs text-green-600">Dimensions (L×W×H)</span>
+                              <p className="text-sm font-medium">
+                                {(variant as any).dimensions.length} × {(variant as any).dimensions.width} × {(variant as any).dimensions.height} {(variant as any).dimensions.unit === 'cm' ? 'cm' : (variant as any).dimensions.unit}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {(variant as any).weight && (variant as any).dimensions && (
+                          <div className="mt-2 pt-2 border-t border-green-200">
+                            <Badge variant="outline" className="bg-green-100 text-green-700">
+                              💚 สำหรับคำนวณค่าจัดส่ง
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {variant.attributes && Object.keys(variant.attributes).length > 0 && (
                       <div className="mt-3 pt-3 border-t">
                         <span className="text-sm font-medium text-muted-foreground">Attributes:</span>
