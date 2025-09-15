@@ -30,6 +30,7 @@ import {
 const ICON_MAP = {
   dashboard: IconHome,
   stores: IconShoppingBag,
+  'store-info': IconShoppingBag,
   users: IconUsers,
   products: IconPackage,
   categories: IconFolder,

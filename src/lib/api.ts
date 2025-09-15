@@ -199,8 +199,14 @@ export interface Store {
     state?: string;
     zipCode?: string;
     country?: string;
+    latitude?: number;
+    longitude?: number;
+    location?: {
+      type: 'Point';
+      coordinates: [number, number]; // [longitude, latitude]
+    };
   };
-  owner?: {
+  owner?: string | {
     _id: string;
     name: string;
     email: string;
@@ -212,10 +218,10 @@ export interface Store {
   status: 'pending' | 'active' | 'suspended' | 'inactive' | 'closed';
   commission?: {
     rate: number;
-    feeStructure: string;
+    feeStructure: 'percentage' | 'fixed';
   };
   businessInfo?: {
-    businessType: string;
+    businessType: 'individual' | 'corporation' | 'partnership';
     taxId?: string;
     registrationNumber?: string;
   };
@@ -751,6 +757,8 @@ export interface UpdateStoreRequest {
     state?: string
     zipCode?: string
     country?: string
+    latitude?: number
+    longitude?: number
   }
   businessInfo?: {
     businessType?: string
@@ -1143,6 +1151,21 @@ export const storeApi = {
       return await apiClient.get<Store>('/stores/my-store')
     } catch (error: any) {
       console.error('Error in getCurrentUserStore:', error);
+      console.error('Error details:', {
+        status: error?.status,
+        message: error?.message,
+        data: error?.data
+      });
+      throw error;
+    }
+  },
+
+  // Update merchant's own store (for merchants)
+  updateMerchantStore: async (data: UpdateStoreRequest) => {
+    try {
+      return await apiClient.put<{ data: Store }>('/stores/my-store', data)
+    } catch (error: any) {
+      console.error('Error in updateMerchantStore:', error);
       console.error('Error details:', {
         status: error?.status,
         message: error?.message,

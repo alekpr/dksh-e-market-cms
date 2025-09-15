@@ -15,6 +15,7 @@ import OrdersPage from "@/app/orders/page"
 import PromotionsPage from "@/app/promotions/page"
 import InventoryManagementPage from "@/app/inventory-management/page"
 import AnalyticsPage from "@/app/analytics/page"
+import StoreInformationPage from "@/app/store-information/page"
 import LoginPage from "@/app/login/page"
 import UnauthorizedPage from "@/app/unauthorized/page"
 
@@ -77,6 +78,11 @@ function App() {
             } />
             
             {/* Merchant-only routes */}
+            <Route path="/store-information" element={
+              <RoleGuard requiredPermission="store-info">
+                <StoreInformationPage />
+              </RoleGuard>
+            } />
             <Route path="/products" element={
               <ProductManagementRoute>
                 <ProductsPage />
