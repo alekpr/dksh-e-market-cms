@@ -1999,8 +1999,11 @@ export const promotionApi = {
   },
 }
 
-// Shipping Configuration Types
+// Shipping Configuration Types (Updated for new API)
 export interface ShippingConfig {
+  _id?: string;
+  name?: string;
+  version?: number;
   baseRate: number;
   minimumCost: number;
   freeShippingThreshold: number;
@@ -2026,28 +2029,87 @@ export interface ShippingConfig {
     width: number;
     height: number;
   };
+  status?: 'active' | 'inactive' | 'draft';
+  description?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface ShippingConfigUpdate {
-  updatedBy: {
-    id: string;
-    email: string;
+export interface ShippingConfigMetadata {
+  id: string;
+  name: string;
+  version: number;
+  status: 'active' | 'inactive' | 'draft';
+  description: string;
+  configAge: number; // days since last update
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: {
+    _id: string;
     name: string;
+    email: string;
+  };
+  updatedBy?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface ShippingConfigUpdateInfo {
+  updatedBy: {
+    _id: string;
+    name: string;
+    email: string;
   };
   updatedAt: string;
-  fieldsUpdated: string[];
+  version: number;
+  description?: string;
 }
 
-// Shipping API functions
+export interface ShippingConfigHistoryItem {
+  _id: string;
+  name: string;
+  version: number;
+  status: 'active' | 'inactive' | 'draft';
+  description: string;
+  config: ShippingConfig;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  updatedBy?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface ShippingConfigValidationResult {
+  success: boolean;
+  message: string;
+  errors?: string[];
+  data?: {
+    config: ShippingConfig;
+  };
+}
+
+// Shipping API functions (Updated for new API)
 export const shippingApi = {
-  // Get current shipping configuration (public)
+  // Get current shipping configuration (admin only)
   getShippingConfig: () => {
     return apiClient.get<{
       success: boolean;
       data: {
         config: ShippingConfig;
+        metadata: ShippingConfigMetadata;
       };
-    }>('/shipping/config')
+    }>('/admin/shipping-config')
   },
 
   // Update shipping configuration (admin only)
@@ -2057,9 +2119,62 @@ export const shippingApi = {
       message: string;
       data: {
         config: ShippingConfig;
-        updateInfo: ShippingConfigUpdate;
+        updateInfo: ShippingConfigUpdateInfo;
       };
-    }>('/shipping/config', { config })
+    }>('/admin/shipping-config', config)
+  },
+
+  // Refresh shipping configuration cache
+  refreshShippingConfig: () => {
+    return apiClient.post<{
+      success: boolean;
+      message: string;
+      data: {
+        config: ShippingConfig;
+        metadata: ShippingConfigMetadata;
+      };
+    }>('/admin/shipping-config/refresh')
+  },
+
+  // Get shipping configuration history
+  getShippingConfigHistory: (params?: {
+    page?: number;
+    limit?: number;
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean;
+      data: {
+        configs: ShippingConfigHistoryItem[];
+        pagination: {
+          currentPage: number;
+          totalPages: number;
+          totalItems: number;
+          itemsPerPage: number;
+        };
+      };
+    }>(`/admin/shipping-config/history${query ? `?${query}` : ''}`)
+  },
+
+  // Validate shipping configuration without saving
+  validateShippingConfig: (config: Partial<ShippingConfig>) => {
+    return apiClient.post<ShippingConfigValidationResult>('/admin/shipping-config/validate', config)
+  },
+
+  // Reset configuration to default values
+  resetShippingConfigToDefault: () => {
+    return apiClient.post<{
+      success: boolean;
+      message: string;
+      data: {
+        config: ShippingConfig;
+        metadata: ShippingConfigMetadata;
+      };
+    }>('/admin/shipping-config/reset-to-default')
   },
 
   // Get shipping methods available

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { shippingApi, type ShippingConfig } from '@/lib/api'
+import { shippingApi, type ShippingConfig, type ShippingConfigMetadata } from '@/lib/api'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -18,13 +18,14 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle, Loader2, Save, RotateCcw, Truck } from 'lucide-react'
+import { AlertCircle, CheckCircle, Loader2, Save, RotateCcw, Truck, RefreshCw, History, Shield } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function ShippingConfigPage() {
   const { user } = useAuth()
   const [config, setConfig] = useState<ShippingConfig | null>(null)
   const [originalConfig, setOriginalConfig] = useState<ShippingConfig | null>(null)
+  const [metadata, setMetadata] = useState<ShippingConfigMetadata | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,11 +68,13 @@ export default function ShippingConfigPage() {
     try {
       setIsLoading(true)
       setError(null)
-      const response:any = await shippingApi.getShippingConfig()
+      const response = await shippingApi.getShippingConfig()
       
       if (response.success && response.data) {
-        setConfig(response.data.config)
-        setOriginalConfig(response.data.config)
+        const data = response.data as any
+        setConfig(data.config)
+        setOriginalConfig(data.config)
+        setMetadata(data.metadata)
       } else {
         setError('Failed to load shipping configuration')
       }
@@ -91,12 +94,19 @@ export default function ShippingConfigPage() {
       setError(null)
       setSuccess(null)
 
-      const response:any = await shippingApi.updateShippingConfig(config)
+      const response = await shippingApi.updateShippingConfig(config)
       
       if (response.success && response.data) {
+        const data = response.data as any
         setOriginalConfig(config)
         setHasChanges(false)
-        setSuccess(`Configuration updated successfully by ${response.data.updateInfo.updatedBy.email}`)
+        
+        // Update success message with user info if available
+        if (data.updateInfo?.updatedBy?.email) {
+          setSuccess(`Configuration updated successfully by ${data.updateInfo.updatedBy.email}`)
+        } else {
+          setSuccess('Configuration updated successfully')
+        }
         
         // Auto-hide success message after 5 seconds
         setTimeout(() => setSuccess(null), 5000)
@@ -116,6 +126,57 @@ export default function ShippingConfigPage() {
       setConfig(originalConfig)
       setError(null)
       setSuccess(null)
+    }
+  }
+
+  const resetToDefaultConfiguration = async () => {
+    try {
+      setIsSaving(true)
+      setError(null)
+      setSuccess(null)
+
+      const response = await shippingApi.resetShippingConfigToDefault()
+      
+      if (response.success && response.data) {
+        const data = response.data as any
+        setConfig(data.config)
+        setOriginalConfig(data.config)
+        if (data.metadata) {
+          setMetadata(data.metadata)
+        }
+        setHasChanges(false)
+        setSuccess('Configuration reset to default values successfully')
+        
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => setSuccess(null), 5000)
+      } else {
+        setError(response.message || 'Failed to reset configuration')
+      }
+    } catch (error: any) {
+      console.error('Error resetting config:', error)
+      setError(error.message || 'Failed to reset configuration')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const validateConfiguration = async () => {
+    if (!config) return
+
+    try {
+      const response = await shippingApi.validateShippingConfig(config)
+      
+      if (response.success || (response.data && response.data.success)) {
+        setSuccess('Configuration is valid!')
+        setTimeout(() => setSuccess(null), 3000)
+      } else {
+        const validationResult = response.data || response as any
+        const errors = validationResult.errors ? validationResult.errors.join(', ') : validationResult.message || 'Validation failed'
+        setError(`Validation failed: ${errors}`)
+      }
+    } catch (error: any) {
+      console.error('Error validating config:', error)
+      setError(error.message || 'Failed to validate configuration')
     }
   }
 
@@ -206,6 +267,15 @@ export default function ShippingConfigPage() {
               <p className="text-muted-foreground">
                 Manage shipping rates, thresholds, and calculation parameters
               </p>
+              {metadata && (
+                <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>Version: {metadata.version}</span>
+                  <span>Status: {metadata.status}</span>
+                  {metadata.configAge > 0 && (
+                    <span>Last updated: {metadata.configAge} days ago</span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {hasChanges && (
@@ -215,11 +285,35 @@ export default function ShippingConfigPage() {
               )}
               <Button 
                 variant="outline" 
+                onClick={validateConfiguration}
+                disabled={!config || isLoading}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Validate
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={resetConfiguration}
                 disabled={!hasChanges}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={loadShippingConfig}
+                disabled={isLoading}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={resetToDefaultConfiguration}
+                disabled={isSaving}
+              >
+                <History className="h-4 w-4 mr-2" />
+                Reset to Default
               </Button>
               <Button 
                 onClick={saveConfiguration}
@@ -579,6 +673,42 @@ export default function ShippingConfigPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+          {/* Configuration Information Card */}
+          {metadata && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Configuration Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <h4 className="font-medium text-foreground">Version Info</h4>
+                    <p className="text-muted-foreground">Version: {metadata.version}</p>
+                    <p className="text-muted-foreground">Status: <Badge variant="outline">{metadata.status}</Badge></p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">Last Updated</h4>
+                    <p className="text-muted-foreground">
+                      {metadata.configAge === 0 ? 'Today' : `${metadata.configAge} days ago`}
+                    </p>
+                    {metadata.updatedBy && (
+                      <p className="text-muted-foreground">By: {metadata.updatedBy.email}</p>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">Description</h4>
+                    <p className="text-muted-foreground">
+                      {metadata.description || config?.description || 'No description provided'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Save Button (Fixed at bottom) */}
           {hasChanges && (
