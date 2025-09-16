@@ -1998,3 +1998,162 @@ export const promotionApi = {
     }>('/promotions/calculate-discount', data)
   },
 }
+
+// Shipping Configuration Types
+export interface ShippingConfig {
+  baseRate: number;
+  minimumCost: number;
+  freeShippingThreshold: number;
+  oversizedSurcharge: number;
+  volumetricDivisor: number;
+  weightRates: {
+    standard: number;
+    express: number;
+    same_day: number;
+  };
+  distanceRates: {
+    standard: number;
+    express: number;
+    same_day: number;
+  };
+  maxDeliveryDistance: {
+    standard: number;
+    express: number;
+    same_day: number;
+  };
+  oversizedThreshold: {
+    length: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface ShippingConfigUpdate {
+  updatedBy: {
+    id: string;
+    email: string;
+    name: string;
+  };
+  updatedAt: string;
+  fieldsUpdated: string[];
+}
+
+// Shipping API functions
+export const shippingApi = {
+  // Get current shipping configuration (public)
+  getShippingConfig: () => {
+    return apiClient.get<{
+      success: boolean;
+      data: {
+        config: ShippingConfig;
+      };
+    }>('/shipping/config')
+  },
+
+  // Update shipping configuration (admin only)
+  updateShippingConfig: (config: Partial<ShippingConfig>) => {
+    return apiClient.put<{
+      success: boolean;
+      message: string;
+      data: {
+        config: ShippingConfig;
+        updateInfo: ShippingConfigUpdate;
+      };
+    }>('/shipping/config', { config })
+  },
+
+  // Get shipping methods available
+  getShippingMethods: () => {
+    return apiClient.get<{
+      success: boolean;
+      data: {
+        methods: Array<{
+          id: string;
+          name: string;
+          description: string;
+          maxDistance: number;
+          estimatedDays: string;
+        }>;
+      };
+    }>('/shipping/methods')
+  },
+
+  // Calculate shipping cost (for preview)
+  calculateShipping: (data: {
+    storeOrders: Array<{
+      storeId: string;
+      items: Array<{
+        productId: string;
+        quantity: number;
+        weight: number;
+        dimensions: {
+          length: number;
+          width: number;
+          height: number;
+        };
+      }>;
+    }>;
+    shippingAddress: {
+      address: string;
+      district: string;
+      province: string;
+      postalCode: string;
+      coordinates: {
+        lat: number;
+        lng: number;
+      };
+    };
+    shippingMethod: string;
+  }) => {
+    return apiClient.post<{
+      success: boolean;
+      data: Array<{
+        storeId: string;
+        storeName: string;
+        cost: number;
+        distance: number;
+        totalWeight: number;
+        volumetricWeight: number;
+        method: string;
+        estimatedDelivery: string;
+        breakdown: {
+          baseRate: number;
+          weightCost: number;
+          distanceCost: number;
+          oversizedSurcharge: number;
+        };
+      }>;
+    }>('/shipping/calculate', data)
+  },
+
+  // Preview shipping cost for configuration testing
+  previewShippingCost: (data: {
+    testConfig: Partial<ShippingConfig>;
+    testData: {
+      weight: number;
+      dimensions: {
+        length: number;
+        width: number;
+        height: number;
+      };
+      distance: number;
+      method: string;
+    };
+  }) => {
+    return apiClient.post<{
+      success: boolean;
+      data: {
+        cost: number;
+        breakdown: {
+          baseRate: number;
+          weightCost: number;
+          distanceCost: number;
+          oversizedSurcharge: number;
+        };
+        isOversized: boolean;
+        volumetricWeight: number;
+        billableWeight: number;
+      };
+    }>('/shipping/preview', data)
+  }
+}

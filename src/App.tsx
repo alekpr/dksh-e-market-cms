@@ -16,6 +16,7 @@ import PromotionsPage from "@/app/promotions/page"
 import InventoryManagementPage from "@/app/inventory-management/page"
 import AnalyticsPage from "@/app/analytics/page"
 import StoreInformationPage from "@/app/store-information/page"
+import ShippingConfigPage from "@/app/admin/shipping/page"
 import LoginPage from "@/app/login/page"
 import UnauthorizedPage from "@/app/unauthorized/page"
 
@@ -74,6 +75,11 @@ function App() {
             <Route path="/admin/categories/hierarchical" element={
               <RoleGuard requiredPermission="categories-admin">
                 <AdminHierarchicalCategoriesPage />
+              </RoleGuard>
+            } />
+            <Route path="/admin/shipping" element={
+              <RoleGuard requiredPermission="shipping-config">
+                <ShippingConfigPage />
               </RoleGuard>
             } />
             

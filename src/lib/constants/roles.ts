@@ -18,6 +18,7 @@ export const NAVIGATION_PERMISSIONS = {
     'stores',      // Store Management - เฉพาะ Admin
     'users',       // User Management - เฉพาะ Admin
     'categories-admin', // Hierarchical Category Management - เฉพาะ Admin
+    'shipping-config', // Shipping Configuration - เฉพาะ Admin
     'analytics'    // Analytics - Admin สามารถดูได้ทั้งระบบ
   ],
   [USER_ROLES.MERCHANT]: [
@@ -122,6 +123,11 @@ export const NAVIGATION_CONFIG = {
     title: 'Category System',
     icon: 'categories',
     path: '/admin/categories/hierarchical'
+  },
+  'shipping-config': {
+    title: 'Shipping Configuration',
+    icon: 'truck',
+    path: '/admin/shipping'
   },
   promotions: {
     title: 'Promotion Management',

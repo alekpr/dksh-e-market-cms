@@ -11,6 +11,7 @@ import {
   IconShoppingCart,
   IconBox,
   IconChartBar,
+  IconTruck,
 } from "@tabler/icons-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { StoreStatusBadge } from "@/components/store-validation"
@@ -40,6 +41,7 @@ const ICON_MAP = {
   analytics: IconChartBar,
   settings: IconSettings,
   content: IconFileText,
+  truck: IconTruck,
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
