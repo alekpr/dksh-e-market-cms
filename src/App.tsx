@@ -17,6 +17,7 @@ import InventoryManagementPage from "@/app/inventory-management/page"
 import AnalyticsPage from "@/app/analytics/page"
 import StoreInformationPage from "@/app/store-information/page"
 import ShippingConfigPage from "@/app/admin/shipping/page"
+import BannersPage from "@/app/banners/page"
 import LoginPage from "@/app/login/page"
 import UnauthorizedPage from "@/app/unauthorized/page"
 
@@ -80,6 +81,11 @@ function App() {
             <Route path="/admin/shipping" element={
               <RoleGuard requiredPermission="shipping-config">
                 <ShippingConfigPage />
+              </RoleGuard>
+            } />
+            <Route path="/banners" element={
+              <RoleGuard requiredPermission="banners">
+                <BannersPage />
               </RoleGuard>
             } />
             
