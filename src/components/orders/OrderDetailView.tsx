@@ -466,7 +466,7 @@ export function OrderDetailView({
         <CardHeader>
           <CardTitle>Order Items</CardTitle>
           <CardDescription>
-            {order.items.length} item{order.items.length !== 1 ? 's' : ''} in this order
+            {order.items.length} item{order.items.length !== 1 ? 's' : ''} from this store
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -497,25 +497,65 @@ export function OrderDetailView({
           
           <Separator className="my-4" />
           
-          {/* Order Summary */}
+          {/* Order Summary - Show store-specific totals for merchants */}
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>{formatCurrency(order.subtotal)}</span>
+              <span>Subtotal (This Store)</span>
+              <span>{formatCurrency((order as any).storeSubtotal || order.subtotal)}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Shipping</span>
-              <span>{formatCurrency(order.shippingCost)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tax</span>
-              <span>{formatCurrency(order.tax)}</span>
-            </div>
+            
+            {!isAdmin && (order as any).storeShippingCost !== undefined && (
+              <div className="flex justify-between">
+                <span>Shipping (This Store)</span>
+                <span>{formatCurrency((order as any).storeShippingCost)}</span>
+              </div>
+            )}
+            
+            {isAdmin && (
+              <div className="flex justify-between">
+                <span>Shipping (Total Order)</span>
+                <span>{formatCurrency(order.shippingCost)}</span>
+              </div>
+            )}
+            
+            {!isAdmin && (order as any).storeTax !== undefined && (
+              <div className="flex justify-between">
+                <span>Tax (This Store)</span>
+                <span>{formatCurrency((order as any).storeTax)}</span>
+              </div>
+            )}
+            
+            {isAdmin && (
+              <div className="flex justify-between">
+                <span>Tax (Total Order)</span>
+                <span>{formatCurrency(order.tax)}</span>
+              </div>
+            )}
+            
+            {(order as any).storeDiscount !== undefined && (order as any).storeDiscount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Discount (This Store)</span>
+                <span>-{formatCurrency((order as any).storeDiscount)}</span>
+              </div>
+            )}
+            
             <Separator />
             <div className="flex justify-between font-semibold text-lg">
-              <span>Total</span>
-              <span>{formatCurrency(order.total || order.totalAmount || 0)}</span>
+              <span>Total {!isAdmin ? '(This Store)' : ''}</span>
+              <span>
+                {formatCurrency(
+                  !isAdmin && (order as any).storeTotal !== undefined
+                    ? (order as any).storeTotal
+                    : order.total || order.totalAmount || 0
+                )}
+              </span>
             </div>
+            
+            {!isAdmin && (order as any).storeTotal !== undefined && (
+              <div className="text-sm text-muted-foreground text-right">
+                Total order amount: {formatCurrency(order.total || order.totalAmount || 0)}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

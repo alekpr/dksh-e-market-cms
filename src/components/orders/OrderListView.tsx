@@ -404,7 +404,17 @@ export function OrderListView({
                           </div>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(order.total || order.totalAmount || 0)}
+                          {/* Show store-specific total for merchants, full total for admins */}
+                          {formatCurrency(
+                            !isAdmin && (order as any).storeTotal !== undefined
+                              ? (order as any).storeTotal
+                              : order.total || order.totalAmount || 0
+                          )}
+                          {!isAdmin && (order as any).storeTotal !== undefined && (
+                            <div className="text-xs text-muted-foreground">
+                              (Store portion)
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge 
