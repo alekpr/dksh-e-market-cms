@@ -15,12 +15,14 @@ type ViewMode = 'list' | 'create' | 'edit' | 'view'
 
 export function BannerManagement() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [selectedBanner, setSelectedBanner] = useState<Banner | null>(null)
   const { user } = useAuth()
   
   const {
+    selectedBanner,
     createBanner,
     updateBanner,
+    selectBanner,
+    setSelectedBanner,
     loading
   } = useBannerManagement()
 
@@ -63,6 +65,9 @@ export function BannerManagement() {
         const result = await updateBanner(selectedBanner._id, data as UpdateBannerRequest)
         console.log('Update banner result:', result)
         
+        // Refresh banner data after successful update
+        await selectBanner(selectedBanner._id)
+        
         // Navigate back to detail view after editing banner
         setViewMode('view')
       }
@@ -70,7 +75,7 @@ export function BannerManagement() {
       console.error('Error submitting banner:', error)
       // Keep on current view if there's an error
     }
-  }, [viewMode, selectedBanner, createBanner, updateBanner])
+  }, [viewMode, selectedBanner, createBanner, updateBanner, selectBanner, setSelectedBanner])
 
   // Show form for create/edit modes
   if (viewMode === 'create' || viewMode === 'edit') {

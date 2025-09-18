@@ -120,9 +120,10 @@ export default function ProductsPage() {
     handleSave = () => {},
     handleDelete = () => {},
     handleToggleStatus = () => {},
-    handleToggleFeatured = () => {},
-    handleCancel = () => {},
-    handleSearch = () => {},
+    handleToggleFeatured,
+    handleCancel,
+    handleSearch,
+    loadProducts,
     setSearchTerm = () => {},
     setFilterStatus = () => {},
     setFilterCategory = () => {},
@@ -252,6 +253,7 @@ export default function ProductsPage() {
                 setSortOrder(order)
               }}
               onPageChange={setCurrentPage}
+              onRefresh={loadProducts}
             />
           )
       }

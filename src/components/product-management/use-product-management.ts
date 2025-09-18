@@ -562,6 +562,9 @@ export const useProductManagement = () => {
     handleCancel,
     handleSearch,
     
+    // Data refresh
+    loadProducts,
+    
     // State setters
     setSearchTerm,
     setFilterStatus,

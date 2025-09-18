@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { GenericDataTable } from "../store-management/generic-data-table"
-import { Plus, Search, X, Package, Star, MoreHorizontal, Edit, Eye, Trash, TrendingUp } from 'lucide-react'
+import { Plus, Search, X, Package, Star, MoreHorizontal, Edit, Eye, Trash, TrendingUp, Upload } from 'lucide-react'
+import { CSVImportDialog } from './csv-import-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +59,7 @@ interface ProductListViewProps {
   onFilterStoreChange: (store: string) => void
   onSortChange: (field: string, order: 'asc' | 'desc') => void
   onPageChange: (page: number) => void
+  onRefresh?: () => void
 }
 
 export const ProductListView: React.FC<ProductListViewProps> = ({
@@ -87,7 +89,8 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
   onFilterCategoryChange,
   onFilterStoreChange,
   onSortChange,
-  onPageChange
+  onPageChange,
+  onRefresh
 }) => {
   
   // Get status badge variant
@@ -402,10 +405,21 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
             {isAdmin ? 'Manage all products across the platform' : `Manage products for ${storeName}`}
           </p>
         </div>
-        <Button onClick={onAdd}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Product
-        </Button>
+        <div className="flex gap-2">
+          <CSVImportDialog
+            trigger={
+              <Button variant="outline">
+                <Upload className="mr-2 h-4 w-4" />
+                Import CSV
+              </Button>
+            }
+            onImportComplete={onRefresh}
+          />
+          <Button onClick={onAdd}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}

@@ -45,7 +45,7 @@ export function clearServerData() {
 
 // Function to show helpful info about API connection
 export function showApiInfo() {
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000'
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'
   console.log('🌐 Current API Configuration:')
   console.log(`   Base URL: ${apiUrl}`)
   console.log(`   Full API URL: ${apiUrl}/api/v1`)

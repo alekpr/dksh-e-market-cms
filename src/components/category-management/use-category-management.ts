@@ -40,6 +40,17 @@ export const useCategoryManagement = () => {
     limit: 50,
   })
   
+  // State for name conflict checking
+  const [nameConflict, setNameConflict] = useState<{
+    exists: boolean
+    conflictType: 'store' | 'master' | 'other' | null
+    suggestion: string | null
+  }>({
+    exists: false,
+    conflictType: null,
+    suggestion: null
+  })
+  
   const [formData, setFormData] = useState<CategoryFormData>({
     name: '',
     description: '',
@@ -78,39 +89,28 @@ export const useCategoryManagement = () => {
     setError(null)
     
     try {
-      // Build API parameters
+      // Build API parameters - Only fetch flat data for consistency
       const apiParams = {
-        asTree: true,
         withProducts: true,
-        page: currentPage,
-        limit: pagination.limit,
+        limit: 1000, // Get all for complete data
         isActive: filterStatus === 'all' ? undefined : (filterStatus === 'active'),
         ...(storeId && user?.role === 'merchant' ? { store: storeId } : {})
       }
 
-      // Fetch tree structure for display
-      const treeResponse = await categoryApi.getCategories(apiParams)
+      // Fetch only flat list - we'll build tree structure manually
+      const response = await categoryApi.getCategories(apiParams)
 
-      if (treeResponse.success && treeResponse.data) {
-        setCategories(Array.isArray(treeResponse.data) ? treeResponse.data : [])
-      }
-
-      // Fetch flat list for form dropdown and table view
-      const flatParams = {
-        withProducts: true,
-        limit: 1000, // Get all for dropdown
-        isActive: filterStatus === 'all' ? undefined : filterStatus === 'active',
-        ...(storeId && user?.role === 'merchant' ? { store: storeId } : {})
-      }
-
-      const flatResponse = await categoryApi.getCategories(flatParams)
-
-      if (flatResponse.success && flatResponse.data) {
-        setFlatCategories(Array.isArray(flatResponse.data) ? flatResponse.data : [])
+      if (response.success && response.data) {
+        const flatData = Array.isArray(response.data) ? response.data : []
+        setFlatCategories(flatData)
+        
+        // Build tree structure from flat data
+        const treeData = buildTreeFromFlat(flatData)
+        setCategories(treeData)
         
         // Update pagination if available
-        if (flatResponse.data.pagination) {
-          setPagination(flatResponse.data.pagination)
+        if (response.data.pagination) {
+          setPagination(response.data.pagination)
         }
       }
 
@@ -123,6 +123,68 @@ export const useCategoryManagement = () => {
     }
   }
 
+  // Build tree structure from flat array
+  const buildTreeFromFlat = (flatData: Category[]): Category[] => {
+    const map = new Map<string, Category>()
+    const roots: Category[] = []
+
+    // First pass: create map and initialize children arrays
+    flatData.forEach(category => {
+      map.set(category._id, { ...category, children: [] })
+    })
+
+    // Second pass: build tree structure
+    flatData.forEach(category => {
+      const node = map.get(category._id)!
+      const parentId = typeof category.parent === 'string' ? category.parent : category.parent?._id
+      
+      if (parentId && map.has(parentId)) {
+        const parent = map.get(parentId)!
+        parent.children!.push(node)
+      } else {
+        roots.push(node)
+      }
+    })
+
+    return roots
+  }
+
+  // Check for name conflicts
+  const checkNameConflict = (name: string, excludeId?: string) => {
+    if (!name.trim()) {
+      setNameConflict({ exists: false, conflictType: null, suggestion: null })
+      return
+    }
+
+    const trimmedName = name.trim().toLowerCase()
+    const existingCategory = flatCategories.find(cat => 
+      cat.name.toLowerCase() === trimmedName && 
+      cat._id !== excludeId
+    )
+
+    if (existingCategory) {
+      // Determine conflict type
+      let conflictType: 'store' | 'master' | 'other' = 'other'
+      if (!existingCategory.store) {
+        conflictType = 'master'
+      } else if (existingCategory.store === storeId) {
+        conflictType = 'store'
+      }
+
+      // Generate suggestion
+      const storePrefix = user?.merchantInfo?.storeName || 'Store'
+      const suggestion = `${name.trim()} (${storePrefix})`
+
+      setNameConflict({
+        exists: true,
+        conflictType,
+        suggestion
+      })
+    } else {
+      setNameConflict({ exists: false, conflictType: null, suggestion: null })
+    }
+  }
+
   // Load categories on component mount and when filters change
   useEffect(() => {
     if (canManageCategories) {
@@ -132,38 +194,82 @@ export const useCategoryManagement = () => {
 
   // Filter categories based on search term
   const filteredCategories = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return viewMode === 'tree' ? categories : flatCategories
+    // Apply search filter to flatCategories first
+    let searchFiltered = flatCategories
+    
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase()
+      searchFiltered = flatCategories.filter(category => 
+        category.name.toLowerCase().includes(searchLower) ||
+        (category.description?.toLowerCase().includes(searchLower) ?? false)
+      )
     }
 
-    const searchLower = searchTerm.toLowerCase()
-    const filterCategory = (category: Category): boolean => {
-      return category.name.toLowerCase().includes(searchLower) ||
-             (category.description?.toLowerCase().includes(searchLower) ?? false)
-    }
-
+    // Return based on view mode
     if (viewMode === 'tree') {
-      const filterTreeCategories = (cats: Category[]): Category[] => {
-        return cats.reduce((acc: Category[], category) => {
-          const matchesSearch = filterCategory(category)
-          const filteredChildren = category.children ? filterTreeCategories(category.children) : []
-          
-          if (matchesSearch || filteredChildren.length > 0) {
-            acc.push({
-              ...category,
-              children: filteredChildren
-            })
+      // Build tree structure from filtered flat data
+      return buildTreeFromFlat(searchFiltered)
+    } else {
+      // Return flat filtered data for table
+      return searchFiltered
+    }
+  }, [flatCategories, searchTerm, viewMode])
+
+  // Get category statistics - Use flatCategories for accurate counts
+  const categoryStats = useMemo(() => {
+    // Always use flatCategories for statistics to ensure accuracy
+    const dataForStats = flatCategories
+    
+    const total = dataForStats.length
+    const active = dataForStats.filter(cat => cat.isActive).length
+    const inactive = total - active
+    const withProducts = dataForStats.filter(cat => cat.productCount && cat.productCount.total > 0).length
+    const featured = dataForStats.filter(cat => cat.featuredOrder && cat.featuredOrder > 0).length
+
+    return {
+      total,
+      active,
+      inactive,
+      withProducts,
+      featured
+    }
+  }, [flatCategories])
+
+  // Get display statistics for current view (what user actually sees)
+  const displayStats = useMemo(() => {
+    // Use filteredCategories in flat format for accurate counting
+    let flatDisplayData: Category[] = []
+    
+    if (viewMode === 'tree' && Array.isArray(filteredCategories)) {
+      // Flatten tree structure for counting
+      const flattenTree = (cats: Category[]): Category[] => {
+        return cats.reduce((acc: Category[], cat) => {
+          acc.push(cat)
+          if (cat.children && cat.children.length > 0) {
+            acc.push(...flattenTree(cat.children))
           }
-          
           return acc
         }, [])
       }
-      
-      return filterTreeCategories(categories)
+      flatDisplayData = flattenTree(filteredCategories as Category[])
     } else {
-      return flatCategories.filter(filterCategory)
+      flatDisplayData = Array.isArray(filteredCategories) ? filteredCategories as Category[] : []
     }
-  }, [categories, flatCategories, searchTerm, viewMode])
+
+    const total = flatDisplayData.length
+    const active = flatDisplayData.filter(cat => cat.isActive).length
+    const inactive = total - active
+    const withProducts = flatDisplayData.filter(cat => cat.productCount && cat.productCount.total > 0).length
+    const featured = flatDisplayData.filter(cat => cat.featuredOrder && cat.featuredOrder > 0).length
+
+    return {
+      total,
+      active,
+      inactive,
+      withProducts,
+      featured
+    }
+  }, [filteredCategories, viewMode])
 
   // Reset form
   const resetForm = () => {
@@ -181,6 +287,9 @@ export const useCategoryManagement = () => {
         keywords: ''
       }
     })
+    
+    // Clear name conflict state
+    setNameConflict({ exists: false, conflictType: null, suggestion: null })
   }
 
   // Handle add category
@@ -250,19 +359,135 @@ export const useCategoryManagement = () => {
 
       if (currentView === 'edit' && selectedCategory) {
         // Update existing category
-        const response = await categoryApi.updateCategory(selectedCategory._id, categoryData)
-        if (response.success) {
-          toast.success('Category updated successfully')
-        } else {
-          throw new Error(response.message || 'Failed to update category')
+        try {
+          const response = await categoryApi.updateCategory(selectedCategory._id, categoryData)
+          if (response.success) {
+            toast.success('Category updated successfully')
+          } else {
+            throw new Error(response.message || 'Failed to update category')
+          }
+        } catch (updateError: any) {
+          // Handle specific duplicate name error for updates
+          if (updateError.message?.includes('category with this name already exists')) {
+            const userChoice = window.confirm(
+              `⚠️ Category Name Conflict\n\n` +
+              `The name "${formData.name}" is already in use by another category.\n\n` +
+              `Click "OK" to update with a unique name\n` +
+              `Click "Cancel" to choose a different name yourself`
+            )
+            
+            if (userChoice) {
+              // Update with store prefix to make it unique
+              const storePrefix = user?.merchantInfo?.storeName || 'Store'
+              const uniqueName = `${formData.name.trim()} (${storePrefix} Updated)`
+              const uniqueData = {
+                ...categoryData,
+                name: uniqueName,
+                originalName: formData.name.trim(),
+                // Add metadata to track this was auto-renamed
+                meta: {
+                  ...categoryData.meta,
+                  autoRenamed: true,
+                  originalRequestedName: formData.name.trim(),
+                  renamedDuringUpdate: true
+                }
+              }
+              
+              try {
+                const retryResponse = await categoryApi.updateCategory(selectedCategory._id, uniqueData)
+                if (retryResponse.success) {
+                  toast.success(`✅ Category updated as "${uniqueName}"`, {
+                    description: "The name was modified to avoid conflicts"
+                  })
+                  // Update form to show the actual name used
+                  setFormData(prev => ({ ...prev, name: uniqueName }))
+                } else {
+                  throw new Error(retryResponse.message || 'Failed to update category with unique name')
+                }
+              } catch (retryError: any) {
+                toast.error(`Failed to update category: ${retryError.message}`, {
+                  description: "Please try a completely different name"
+                })
+                return
+              }
+            } else {
+              toast.error('Please choose a different category name', {
+                description: "The current name conflicts with an existing category"
+              })
+              return
+            }
+          } else {
+            throw updateError
+          }
         }
       } else {
         // Create new category
-        const response = await categoryApi.createCategory(categoryData)
-        if (response.success) {
-          toast.success('Category created successfully')
-        } else {
-          throw new Error(response.message || 'Failed to create category')
+        try {
+          const response = await categoryApi.createCategory(categoryData)
+          if (response.success) {
+            toast.success('Category created successfully')
+          } else {
+            throw new Error(response.message || 'Failed to create category')
+          }
+        } catch (createError: any) {
+          // Handle specific duplicate name error
+          if (createError.message?.includes('category with this name already exists')) {
+            // More user-friendly dialog with better options
+            const userChoice = window.confirm(
+              `⚠️ Category Name Conflict\n\n` +
+              `The name "${formData.name}" is already in use.\n\n` +
+              `This could be because:\n` +
+              `• Another category in your store has this name\n` +
+              `• A master category already exists with this name\n` +
+              `• Another store is using this name\n\n` +
+              `Click "OK" to create with a unique name\n` +
+              `Click "Cancel" to choose a different name yourself`
+            )
+            
+            if (userChoice) {
+              // Create with store prefix to make it unique
+              const storePrefix = user?.merchantInfo?.storeName || 'Store'
+              const uniqueName = `${formData.name.trim()} (${storePrefix})`
+              const uniqueData = {
+                ...categoryData,
+                name: uniqueName,
+                originalName: formData.name.trim(),
+                // Add metadata to track this was auto-renamed
+                meta: {
+                  ...categoryData.meta,
+                  autoRenamed: true,
+                  originalRequestedName: formData.name.trim()
+                }
+              }
+              
+              try {
+                const retryResponse = await categoryApi.createCategory(uniqueData)
+                if (retryResponse.success) {
+                  toast.success(`✅ Category created as "${uniqueName}"`, {
+                    description: "The name was modified to avoid conflicts"
+                  })
+                  // Update form to show the actual name used
+                  setFormData(prev => ({ ...prev, name: uniqueName }))
+                } else {
+                  throw new Error(retryResponse.message || 'Failed to create category with unique name')
+                }
+              } catch (retryError: any) {
+                // If even the unique name fails, show detailed error
+                toast.error(`Failed to create category: ${retryError.message}`, {
+                  description: "Please try a completely different name"
+                })
+                return
+              }
+            } else {
+              // User chose to pick a different name
+              toast.error('Please choose a different category name', {
+                description: "The current name conflicts with an existing category"
+              })
+              return
+            }
+          } else {
+            throw createError
+          }
         }
       }
 
@@ -358,23 +583,6 @@ export const useCategoryManagement = () => {
     setSelectedCategory(null)
   }
 
-  // Get category statistics
-  const categoryStats = useMemo(() => {
-    const total = flatCategories.length
-    const active = flatCategories.filter(cat => cat.isActive).length
-    const inactive = total - active
-    const withProducts = flatCategories.filter(cat => cat.productCount && cat.productCount.total > 0).length
-    const featured = flatCategories.filter(cat => cat.featuredOrder && cat.featuredOrder > 0).length
-
-    return {
-      total,
-      active,
-      inactive,
-      withProducts,
-      featured
-    }
-  }, [flatCategories])
-
   return {
     // State
     categories: filteredCategories,
@@ -390,11 +598,12 @@ export const useCategoryManagement = () => {
     formData,
     currentPage,
     pagination,
-    categoryStats,
+    categoryStats: displayStats,
     canManageCategories,
     storeId,
     storeName: user?.merchantInfo?.storeName,
     hasValidStore,
+    nameConflict,
     
     // Setters
     setSearchTerm: handleSearch,
@@ -402,6 +611,9 @@ export const useCategoryManagement = () => {
     setViewMode: handleViewModeChange,
     setFormData,
     setCurrentPage,
+    
+    // Utilities
+    checkNameConflict,
     
     // Actions
     handleAdd,

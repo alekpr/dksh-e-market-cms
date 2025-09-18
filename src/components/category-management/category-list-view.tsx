@@ -221,7 +221,7 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
         const category = row.original
         const isFeatured = category.featuredOrder && category.featuredOrder > 0
         return (
-          <div className="flex flex-col">
+          <div className="flex flex-col py-3 px-1">
             <div className="flex items-center gap-2">
               <Folder className="w-4 h-4 text-blue-500" />
               <span className="font-medium">{category.name}</span>
@@ -247,10 +247,14 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
           ? flatCategories.find(cat => cat._id === category.parent)
           : category.parent
         
-        return parentCategory ? (
-          <Badge variant="outline">{parentCategory.name}</Badge>
-        ) : (
-          <span className="text-muted-foreground">Root</span>
+        return (
+          <div className="py-3 px-1">
+            {parentCategory ? (
+              <Badge variant="outline">{parentCategory.name}</Badge>
+            ) : (
+              <span className="text-muted-foreground">Root</span>
+            )}
+          </div>
         )
       },
     },
@@ -260,9 +264,11 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
       cell: ({ row }) => {
         const isActive = row.getValue("isActive") as boolean
         return (
-          <Badge variant={isActive ? "default" : "secondary"}>
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
+          <div className="py-3 px-1">
+            <Badge variant={isActive ? "default" : "secondary"}>
+              {isActive ? "Active" : "Inactive"}
+            </Badge>
+          </div>
         )
       },
     },
@@ -271,12 +277,16 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
       header: "Products",
       cell: ({ row }) => {
         const productCount = row.original.productCount
-        return productCount ? (
-          <Badge variant="outline">
-            {productCount.total}
-          </Badge>
-        ) : (
-          <span className="text-muted-foreground">0</span>
+        return (
+          <div className="py-3 px-1">
+            {productCount ? (
+              <Badge variant="outline">
+                {productCount.total}
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">0</span>
+            )}
+          </div>
         )
       },
     },
@@ -284,7 +294,11 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
       accessorKey: "order",
       header: "Order",
       cell: ({ row }) => {
-        return <span className="text-sm">{row.getValue("order")}</span>
+        return (
+          <div className="py-3 px-1">
+            <span className="text-sm">{row.getValue("order")}</span>
+          </div>
+        )
       },
     },
     {
@@ -292,13 +306,17 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
       header: "Featured",
       cell: ({ row }) => {
         const featuredOrder = row.getValue("featuredOrder") as number
-        return featuredOrder ? (
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 text-yellow-500 fill-current" />
-            <span className="text-sm">{featuredOrder}</span>
+        return (
+          <div className="py-3 px-1">
+            {featuredOrder ? (
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                <span className="text-sm">{featuredOrder}</span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground">-</span>
+            )}
           </div>
-        ) : (
-          <span className="text-muted-foreground">-</span>
         )
       },
     },
@@ -307,9 +325,11 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
       header: "Created",
       cell: ({ row }) => {
         return (
-          <span className="text-sm">
-            {new Date(row.getValue("createdAt")).toLocaleDateString()}
-          </span>
+          <div className="py-3 px-1">
+            <span className="text-sm">
+              {new Date(row.getValue("createdAt")).toLocaleDateString()}
+            </span>
+          </div>
         )
       },
     },
@@ -318,13 +338,14 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
       cell: ({ row }) => {
         const category = row.original
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+          <div className="py-3 px-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onView(category)}>
                 <Eye className="mr-2 h-4 w-4" />
@@ -378,6 +399,7 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
               </AlertDialog>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         )
       },
     },
@@ -398,7 +420,8 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
     )
   }
 
-  const displayCategories = viewMode === 'tree' ? categories : flatCategories
+  // Use categories from props directly (already filtered in hook)
+  const displayCategories = categories
 
   return (
     <div className="space-y-6">
@@ -527,12 +550,14 @@ export const CategoryListView: React.FC<CategoryListViewProps> = ({
               </div>
             </div>
           ) : (
-            <GenericDataTable 
-              columns={columns} 
-              data={displayCategories} 
-              searchKey="name"
-              searchPlaceholder="Search categories..."
-            />
+            <div className="px-4 pb-4">
+              <GenericDataTable 
+                columns={columns} 
+                data={displayCategories} 
+                searchKey="name"
+                searchPlaceholder="Search categories..."
+              />
+            </div>
           )}
         </CardContent>
       </Card>

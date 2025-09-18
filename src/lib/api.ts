@@ -1266,6 +1266,94 @@ export const productApi = {
     const query = queryParams.toString()
     return apiClient.get<{ data: Product[] }>(`/products/${id}/related${query ? `?${query}` : ''}`)
   },
+
+  // CSV Import methods
+  downloadCSVTemplate: async () => {
+    const token = tokenStorage.getAccessToken()
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    const response = await fetch(`${API_BASE_URL}/products/import/template`, {
+      method: 'GET',
+      headers,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to download template: ${response.statusText}`)
+    }
+
+    return response.blob()
+  },
+
+  validateCSV: async (file: File) => {
+    const token = tokenStorage.getAccessToken()
+    const formData = new FormData()
+    formData.append('csvFile', file)
+
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    const response = await fetch(`${API_BASE_URL}/products/import/validate`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Validation failed' }))
+      throw new Error(errorData.message || `Validation failed: ${response.statusText}`)
+    }
+
+    return response.json()
+  },
+
+  importCSV: async (file: File) => {
+    const token = tokenStorage.getAccessToken()
+    const formData = new FormData()
+    formData.append('csvFile', file)
+
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    const response = await fetch(`${API_BASE_URL}/products/import/csv`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Import failed' }))
+      throw new Error(errorData.message || `Import failed: ${response.statusText}`)
+    }
+
+    return response.json()
+  },
+
+  getImportHistory: (params?: { page?: number; limit?: number }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    
+    const query = queryParams.toString()
+    return apiClient.get<{
+      success: boolean
+      data: {
+        imports: any[]
+        pagination: {
+          total: number
+          page: number
+          pages: number
+          limit: number
+        }
+      }
+    }>(`/products/import/history${query ? `?${query}` : ''}`)
+  },
 }
 
 // Category management API methods  
