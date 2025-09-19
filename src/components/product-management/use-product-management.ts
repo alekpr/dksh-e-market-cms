@@ -470,16 +470,44 @@ export const useProductManagement = () => {
   }
 
   const handleToggleFeatured = async (product: Product) => {
-    if (!isAdmin) return
-
     try {
+      // Optimistic update - update UI immediately
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p._id === product._id 
+            ? { ...p, featured: !p.featured }
+            : p
+        )
+      )
+
       const response = await productApi.toggleProductFeatured(product._id)
-      if (response.status === 'success') {
-        await loadProducts()
+      if (response.success === true || response.status === 'success') {
+        // Update product stats without full reload
+        setProductStats(prevStats => ({
+          ...prevStats,
+          featured: prevStats.featured + (product.featured ? -1 : 1)
+        }))
+      } else {
+        // Revert optimistic update if API call failed
+        setProducts(prevProducts => 
+          prevProducts.map(p => 
+            p._id === product._id 
+              ? { ...p, featured: product.featured }
+              : p
+          )
+        )
       }
     } catch (err) {
       console.error('Error toggling featured status:', err)
       setError('Failed to update featured status')
+      // Revert optimistic update on error
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p._id === product._id 
+            ? { ...p, featured: product.featured }
+            : p
+        )
+      )
     }
   }
 

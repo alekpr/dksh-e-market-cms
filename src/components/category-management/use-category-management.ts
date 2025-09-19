@@ -346,27 +346,57 @@ export const useCategoryManagement = () => {
     try {
       setLoading(true)
       
-      const categoryData = {
-        ...formData,
+      // Prepare category data with proper field handling
+      const categoryData: any = {
         name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        parent: formData.parent || undefined,
-        image: formData.image.trim() || undefined,
-        icon: formData.icon.trim() || undefined,
-        // Only include store for merchants
-        ...(user?.role === 'merchant' && storeId ? { store: storeId } : {})
+        description: formData.description.trim(),
+        image: formData.image.trim(),
+        icon: formData.icon.trim(),
+        isActive: formData.isActive,
+        order: formData.order,
+        // Ensure meta is properly structured - always send the object
+        meta: {
+          title: formData.meta.title?.trim() || '',
+          description: formData.meta.description?.trim() || '',
+          keywords: formData.meta.keywords?.trim() || ''
+        }
       }
+
+      // Only add parent if it has a valid value
+      if (formData.parent && formData.parent.trim()) {
+        categoryData.parent = formData.parent.trim()
+      } else if (currentView === 'edit' && selectedCategory?.parent) {
+        // For edit mode: if category had parent before but now parent is empty,
+        // we need to explicitly remove parent by sending a special value
+        categoryData.removeParent = true
+      }
+
+      // Only include store for merchants
+      if (user?.role === 'merchant' && storeId) {
+        categoryData.store = storeId
+      }
+
+      // Debug logging to check what data is being sent
+      console.log('🔍 Category Data being sent to API:', categoryData)
+      console.log('🔍 User role:', user?.role)
+      console.log('🔍 Store ID:', storeId)
+      console.log('🔍 Form Data:', formData)
 
       if (currentView === 'edit' && selectedCategory) {
         // Update existing category
         try {
+          console.log('🔄 Updating category with ID:', selectedCategory._id)
           const response = await categoryApi.updateCategory(selectedCategory._id, categoryData)
+          console.log('✅ Update response:', response)
+          
           if (response.success) {
             toast.success('Category updated successfully')
           } else {
+            console.error('❌ Update failed - response:', response)
             throw new Error(response.message || 'Failed to update category')
           }
         } catch (updateError: any) {
+          console.error('❌ Update error:', updateError)
           // Handle specific duplicate name error for updates
           if (updateError.message?.includes('category with this name already exists')) {
             const userChoice = window.confirm(
@@ -423,13 +453,18 @@ export const useCategoryManagement = () => {
       } else {
         // Create new category
         try {
+          console.log('✨ Creating new category')
           const response = await categoryApi.createCategory(categoryData)
+          console.log('✅ Create response:', response)
+          
           if (response.success) {
             toast.success('Category created successfully')
           } else {
+            console.error('❌ Create failed - response:', response)
             throw new Error(response.message || 'Failed to create category')
           }
         } catch (createError: any) {
+          console.error('❌ Create error:', createError)
           // Handle specific duplicate name error
           if (createError.message?.includes('category with this name already exists')) {
             // More user-friendly dialog with better options
@@ -494,10 +529,16 @@ export const useCategoryManagement = () => {
       setCurrentView('list')
       resetForm()
       setSelectedCategory(null)
+      console.log('🔄 Refreshing categories list...')
       fetchCategories() // Refresh the list
       
     } catch (error: any) {
-      console.error('Failed to save category:', error)
+      console.error('❌ Failed to save category:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      })
       toast.error(error.message || 'Failed to save category')
     } finally {
       setLoading(false)

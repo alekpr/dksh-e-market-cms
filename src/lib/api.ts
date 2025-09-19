@@ -1235,9 +1235,9 @@ export const productApi = {
   deleteProductVariant: (id: string, variantId: string) =>
     apiClient.delete<{ data: Product }>(`/products/${id}/variants/${variantId}`),
 
-  // Toggle product featured status (admin only)
+  // Toggle product featured status
   toggleProductFeatured: (id: string) =>
-    apiClient.patch<{ data: Product }>(`/products/${id}/featured`),
+    apiClient.put<{ data: Product }>(`/products/${id}/featured`),
 
   // Search products
   searchProducts: (query: string, params?: { page?: number; limit?: number; category?: string; store?: string }) => {
@@ -1467,7 +1467,7 @@ export const categoryApi = {
   createCategory: (data: {
     name: string
     description?: string
-    parent?: string
+    parent?: string | null  // Allow null to indicate no parent
     image?: string
     icon?: string
     isActive?: boolean
@@ -1485,7 +1485,7 @@ export const categoryApi = {
   updateCategory: (id: string, data: {
     name?: string
     description?: string
-    parent?: string
+    parent?: string | null  // Allow null to clear parent
     image?: string
     icon?: string
     isActive?: boolean

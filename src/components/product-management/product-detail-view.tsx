@@ -243,15 +243,13 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                     Featured
                   </Badge>
                 )}
-                {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onToggleFeatured(product)}
-                  >
-                    {product.featured ? 'Remove Featured' : 'Make Featured'}
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onToggleFeatured(product)}
+                >
+                  {product.featured ? 'Remove Featured' : 'Make Featured'}
+                </Button>
               </div>
 
               <div className="space-y-3">

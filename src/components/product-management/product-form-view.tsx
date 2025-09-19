@@ -348,7 +348,6 @@ export const ProductFormView: React.FC<ProductFormViewProps> = ({
                       id="featured"
                       checked={formData.featured}
                       onCheckedChange={(checked) => handleFieldChange('featured', checked)}
-                      disabled={!isAdmin}
                     />
                     <Label htmlFor="featured">Featured Product</Label>
                   </div>

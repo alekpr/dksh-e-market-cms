@@ -308,15 +308,11 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
       header: "Featured",
       cell: ({ row }) => {
         const product = row.original
-        return isAdmin ? (
+        return (
           <Switch
             checked={product.featured}
             onCheckedChange={() => onToggleFeatured(product)}
           />
-        ) : (
-          <div className="flex items-center">
-            {product.featured && <Star className="h-4 w-4 text-yellow-500" />}
-          </div>
         )
       },
     },
