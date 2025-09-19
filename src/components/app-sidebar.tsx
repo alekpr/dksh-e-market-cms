@@ -13,6 +13,7 @@ import {
   IconChartBar,
   IconTruck,
   IconPhoto,
+  IconLayout,
 } from "@tabler/icons-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { StoreStatusBadge } from "@/components/store-validation"
@@ -33,6 +34,7 @@ const ICON_MAP = {
   dashboard: IconHome,
   stores: IconShoppingBag,
   'store-info': IconShoppingBag,
+  'store-layout': IconLayout,
   users: IconUsers,
   products: IconPackage,
   categories: IconFolder,

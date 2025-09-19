@@ -16,6 +16,7 @@ import PromotionsPage from "@/app/promotions/page"
 import InventoryManagementPage from "@/app/inventory-management/page"
 import AnalyticsPage from "@/app/analytics/page"
 import StoreInformationPage from "@/app/store-information/page"
+import StoreLayoutPage from "@/app/store-layout/page"
 import ShippingConfigPage from "@/app/admin/shipping/page"
 import BannersPage from "@/app/banners/page"
 import LoginPage from "@/app/login/page"
@@ -93,6 +94,11 @@ function App() {
             <Route path="/store-information" element={
               <RoleGuard requiredPermission="store-info">
                 <StoreInformationPage />
+              </RoleGuard>
+            } />
+            <Route path="/store-layout" element={
+              <RoleGuard requiredPermission="store-layout">
+                <StoreLayoutPage />
               </RoleGuard>
             } />
             <Route path="/products" element={

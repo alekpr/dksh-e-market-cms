@@ -25,6 +25,7 @@ export const NAVIGATION_PERMISSIONS = {
   [USER_ROLES.MERCHANT]: [
     'dashboard',
     'store-info',   // Store Information - เฉพาะ Merchant
+    'store-layout', // Store Layout Management - เฉพาะ Merchant
     'products',    // Product Management - เฉพาะ Merchant
     'categories',  // Store Category Management - เฉพาะ Merchant
     'promotions',  // Promotion Management - เฉพาะ Merchant
@@ -104,6 +105,11 @@ export const NAVIGATION_CONFIG = {
     title: 'Store Information',
     icon: 'store-info',
     path: '/store-information'
+  },
+  'store-layout': {
+    title: 'Store Layout',
+    icon: 'layout',
+    path: '/store-layout'
   },
   users: {
     title: 'User Management', 
