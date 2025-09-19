@@ -81,6 +81,8 @@ const getStatusColor = (status: Order['status']) => {
       return 'bg-blue-100 text-blue-800 border-blue-200'
     case 'processing':
       return 'bg-orange-100 text-orange-800 border-orange-200'
+    case 'waiting_for_delivery':
+      return 'bg-indigo-100 text-indigo-800 border-indigo-200'
     case 'shipped':
       return 'bg-purple-100 text-purple-800 border-purple-200'
     case 'delivered':
@@ -119,6 +121,8 @@ const getStatusIcon = (status: Order['status']) => {
       return <AlertCircle className="w-3 h-3" />
     case 'processing':
       return <Package className="w-3 h-3" />
+    case 'waiting_for_delivery':
+      return <Clock className="w-3 h-3 text-indigo-600" />
     case 'shipped':
       return <Truck className="w-3 h-3" />
     case 'delivered':
@@ -312,6 +316,7 @@ export function OrderListView({
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="confirmed">Confirmed</SelectItem>
                 <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="waiting_for_delivery">Waiting for Delivery</SelectItem>
                 <SelectItem value="shipped">Shipped</SelectItem>
                 <SelectItem value="delivered">Delivered</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -422,7 +427,7 @@ export function OrderListView({
                             className={`flex items-center gap-1 w-fit ${getStatusColor(order.status)}`}
                           >
                             {getStatusIcon(order.status)}
-                            {order.status}
+                            {order.status.replace('_', ' ')}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -469,6 +474,15 @@ export function OrderListView({
                               
                               {order.status === 'processing' && (
                                 <DropdownMenuItem 
+                                  onClick={() => handleQuickStatusUpdate(order, 'waiting_for_delivery')}
+                                >
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Ready for Delivery
+                                </DropdownMenuItem>
+                              )}
+                              
+                              {order.status === 'waiting_for_delivery' && (
+                                <DropdownMenuItem 
                                   onClick={() => handleQuickStatusUpdate(order, 'shipped')}
                                 >
                                   <Truck className="mr-2 h-4 w-4" />
@@ -485,7 +499,7 @@ export function OrderListView({
                                 </DropdownMenuItem>
                               )}
                               
-                              {['pending', 'confirmed', 'processing'].includes(order.status) && (
+                              {['pending', 'confirmed', 'processing', 'waiting_for_delivery'].includes(order.status) && (
                                 <DropdownMenuItem 
                                   onClick={() => onCancelOrder(order._id)}
                                   className="text-red-600"

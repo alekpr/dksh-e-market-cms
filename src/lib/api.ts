@@ -411,7 +411,7 @@ export interface Order {
   tax: number;
   totalAmount: number; // API uses 'totalAmount'
   total?: number; // Keep for backward compatibility
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  status: 'pending' | 'confirmed' | 'processing' | 'waiting_for_delivery' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
   // Payment info comes from nested payment object
   payment?: {
     method: string;

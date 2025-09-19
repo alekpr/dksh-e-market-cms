@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Card, 
   CardContent, 
@@ -61,6 +61,8 @@ const getStatusColor = (status: Order['status']) => {
       return 'bg-blue-100 text-blue-800 border-blue-200'
     case 'processing':
       return 'bg-orange-100 text-orange-800 border-orange-200'
+    case 'waiting_for_delivery':
+      return 'bg-indigo-100 text-indigo-800 border-indigo-200'
     case 'shipped':
       return 'bg-purple-100 text-purple-800 border-purple-200'
     case 'delivered':
@@ -99,6 +101,8 @@ const getStatusIcon = (status: Order['status']) => {
       return <AlertCircle className="w-4 h-4" />
     case 'processing':
       return <Package className="w-4 h-4" />
+    case 'waiting_for_delivery':
+      return <Clock className="w-4 h-4 text-indigo-600" />
     case 'shipped':
       return <Truck className="w-4 h-4" />
     case 'delivered':
@@ -120,6 +124,14 @@ export function OrderDetailView({
   onCancelOrder,
   onBack,
 }: OrderDetailViewProps) {
+  // Local state for immediate UI updates
+  const [currentOrder, setCurrentOrder] = useState(order)
+  
+  // Sync with prop changes
+  useEffect(() => {
+    setCurrentOrder(order)
+  }, [order])
+
   const [newStatus, setNewStatus] = useState<Order['status']>(order.status)
   const [statusNotes, setStatusNotes] = useState('')
   const [cancelReason, setCancelReason] = useState('')
@@ -127,27 +139,33 @@ export function OrderDetailView({
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
 
   // Handle both 'customer' and 'user' properties from API
-  const customer = order.customer 
-    ? (typeof order.customer === 'string' 
-       ? { name: 'Unknown', email: '', _id: order.customer } 
-       : order.customer)
-    : order.user 
-      ? (typeof order.user === 'string'
-         ? { name: 'Unknown', email: '', _id: order.user }
-         : order.user)
+  const customer = currentOrder.customer 
+    ? (typeof currentOrder.customer === 'string' 
+       ? { name: 'Unknown', email: '', _id: currentOrder.customer } 
+       : currentOrder.customer)
+    : currentOrder.user 
+      ? (typeof currentOrder.user === 'string'
+         ? { name: 'Unknown', email: '', _id: currentOrder.user }
+         : currentOrder.user)
       : { name: 'Unknown', email: '', _id: 'unknown' }
 
-  const store = typeof order.store === 'string' 
-    ? { name: 'Unknown Store', _id: order.store } 
-    : order.store
+  const store = typeof currentOrder.store === 'string' 
+    ? { name: 'Unknown Store', _id: currentOrder.store } 
+    : currentOrder.store
 
   const handleStatusUpdate = () => {
+    // Optimistic update for immediate UI feedback
+    setCurrentOrder(prev => ({ ...prev, status: newStatus }))
+    
     onUpdateStatus(order._id, newStatus, statusNotes)
     setIsStatusDialogOpen(false)
     setStatusNotes('')
   }
 
   const handleCancelOrder = () => {
+    // Optimistic update for immediate UI feedback
+    setCurrentOrder(prev => ({ ...prev, status: 'cancelled' }))
+    
     onCancelOrder(order._id, cancelReason)
     setIsCancelDialogOpen(false)
     setCancelReason('')
@@ -155,16 +173,18 @@ export function OrderDetailView({
 
   const getAvailableStatusOptions = () => {
     const allStatuses: Order['status'][] = [
-      'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'
+      'pending', 'confirmed', 'processing', 'waiting_for_delivery', 'shipped', 'delivered', 'cancelled'
     ]
     
     // Filter based on current status logic
-    switch (order.status) {
+    switch (currentOrder.status) {
       case 'pending':
         return ['confirmed', 'cancelled']
       case 'confirmed':
         return ['processing', 'cancelled']
       case 'processing':
+        return ['waiting_for_delivery', 'cancelled']
+      case 'waiting_for_delivery':
         return ['shipped', 'cancelled']
       case 'shipped':
         return ['delivered']
@@ -173,7 +193,7 @@ export function OrderDetailView({
       case 'cancelled':
         return [] // No further status changes
       default:
-        return allStatuses.filter(s => s !== order.status)
+        return allStatuses.filter(s => s !== currentOrder.status)
     }
   }
 
@@ -189,9 +209,9 @@ export function OrderDetailView({
             Back to Orders
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Order #{order.orderNumber}</h1>
+            <h1 className="text-2xl font-bold">Order #{currentOrder.orderNumber}</h1>
             <p className="text-muted-foreground">
-              Placed on {formatDate(order.createdAt)}
+              Placed on {formatDate(currentOrder.createdAt)}
             </p>
           </div>
         </div>
@@ -199,10 +219,10 @@ export function OrderDetailView({
         <div className="flex items-center gap-2">
           <Badge 
             variant="outline" 
-            className={`flex items-center gap-1 ${getStatusColor(order.status)}`}
+            className={`flex items-center gap-1 ${getStatusColor(currentOrder.status)}`}
           >
-            {getStatusIcon(order.status)}
-            {order.status}
+            {getStatusIcon(currentOrder.status)}
+            {currentOrder.status}
           </Badge>
           
           {availableStatuses.length > 0 && (
@@ -217,7 +237,7 @@ export function OrderDetailView({
                 <DialogHeader>
                   <DialogTitle>Update Order Status</DialogTitle>
                   <DialogDescription>
-                    Change the status of order #{order.orderNumber}
+                    Change the status of order #{currentOrder.orderNumber}
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -231,7 +251,7 @@ export function OrderDetailView({
                       <SelectContent>
                         {availableStatuses.map((status) => (
                           <SelectItem key={status} value={status}>
-                            <span className="capitalize">{status}</span>
+                            <span className="capitalize">{status.replace('_', ' ')}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -262,7 +282,7 @@ export function OrderDetailView({
             </Dialog>
           )}
           
-          {['pending', 'confirmed', 'processing'].includes(order.status) && (
+          {['pending', 'confirmed', 'processing', 'waiting_for_delivery'].includes(currentOrder.status) && (
             <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="destructive" size="sm">
@@ -274,7 +294,7 @@ export function OrderDetailView({
                 <DialogHeader>
                   <DialogTitle>Cancel Order</DialogTitle>
                   <DialogDescription>
-                    Are you sure you want to cancel order #{order.orderNumber}?
+                    Are you sure you want to cancel order #{currentOrder.orderNumber}?
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -316,11 +336,11 @@ export function OrderDetailView({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Order Number</p>
-                <p className="font-mono">{order.orderNumber}</p>
+                <p className="font-mono">{currentOrder.orderNumber}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Order Date</p>
-                <p>{formatDate(order.createdAt)}</p>
+                <p>{formatDate(currentOrder.createdAt)}</p>
               </div>
             </div>
             
@@ -329,19 +349,19 @@ export function OrderDetailView({
                 <p className="text-sm font-medium text-muted-foreground">Status</p>
                 <Badge 
                   variant="outline" 
-                  className={`flex items-center gap-1 w-fit ${getStatusColor(order.status)}`}
+                  className={`flex items-center gap-1 w-fit ${getStatusColor(currentOrder.status)}`}
                 >
-                  {getStatusIcon(order.status)}
-                  {order.status}
+                  {getStatusIcon(currentOrder.status)}
+                  {currentOrder.status.replace('_', ' ')}
                 </Badge>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Payment Status</p>
                 <Badge 
                   variant="outline" 
-                  className={`w-fit ${getPaymentStatusColor(order.paymentStatus)}`}
+                  className={`w-fit ${getPaymentStatusColor(currentOrder.paymentStatus)}`}
                 >
-                  {order.paymentStatus}
+                  {currentOrder.paymentStatus}
                 </Badge>
               </div>
             </div>
