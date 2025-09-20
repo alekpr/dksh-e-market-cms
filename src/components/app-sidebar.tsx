@@ -63,19 +63,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: config.title,
       url: config.path,
       icon: ICON_MAP[item as keyof typeof ICON_MAP] || IconHome,
+      isActive: false
     }
   })
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <h2 className="text-lg font-semibold">CMS Admin</h2>
-        <p className="text-xs text-muted-foreground capitalize">{user.role} Dashboard</p>
-        {user.role === 'merchant' && (
-          <div className="mt-2">
-            <StoreStatusBadge />
+        <div className="flex items-center px-4 py-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <IconShoppingBag className="h-4 w-4" />
           </div>
-        )}
+          <span className="ml-2 text-lg font-semibold">DKSH E-Market</span>
+        </div>
+        <StoreStatusBadge />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItems} />
@@ -84,7 +85,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser user={{
           name: user.name,
           email: user.email,
-          avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=0ea5e9&color=fff`
+          avatar: user.avatar || '/default-avatar.png'
         }} />
       </SidebarFooter>
       <SidebarRail />
