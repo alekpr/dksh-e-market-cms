@@ -11,6 +11,7 @@ export interface OrderStats {
   pending: number
   confirmed: number
   processing: number
+  waiting_for_delivery: number
   shipped: number
   delivered: number
   cancelled: number
@@ -48,6 +49,7 @@ export function useOrderManagement() {
     pending: 0,
     confirmed: 0,
     processing: 0,
+    waiting_for_delivery: 0,
     shipped: 0,
     delivered: 0,
     cancelled: 0,
@@ -147,6 +149,7 @@ export function useOrderManagement() {
           pending: 0,
           confirmed: 0,
           processing: 0,
+          waiting_for_delivery: 0,
           shipped: 0,
           delivered: 0,
           cancelled: 0,
@@ -163,6 +166,9 @@ export function useOrderManagement() {
               break
             case 'processing':
               stats.processing++
+              break
+            case 'waiting_for_delivery':
+              stats.waiting_for_delivery++
               break
             case 'shipped':
               stats.shipped++

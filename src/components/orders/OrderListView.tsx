@@ -187,7 +187,7 @@ export function OrderListView({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -232,6 +232,18 @@ export function OrderListView({
                 <p className="text-2xl font-bold text-orange-600">{orderStats.processing}</p>
               </div>
               <Package className="w-8 h-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Waiting for Delivery</p>
+                <p className="text-2xl font-bold text-indigo-600">{orderStats.waiting_for_delivery}</p>
+              </div>
+              <Clock className="w-8 h-8 text-indigo-600" />
             </div>
           </CardContent>
         </Card>
