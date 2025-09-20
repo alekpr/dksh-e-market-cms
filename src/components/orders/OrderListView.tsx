@@ -31,6 +31,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   ArrowUpDown,
   CheckCircle2,
   Clock,
@@ -262,6 +272,19 @@ export function OrderListView({
   onPageChange,
 }: OrderListViewProps) {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    order: Order | null
+    newStatus: Order['status'] | null
+    title: string
+    description: string
+  }>({
+    open: false,
+    order: null,
+    newStatus: null,
+    title: '',
+    description: ''
+  })
 
   // Calculate store-specific stats for merchants
   const displayStats = isAdmin 
@@ -273,8 +296,104 @@ export function OrderListView({
     onSearch(localSearchTerm)
   }
 
+  const getStatusDisplayName = (status: Order['status']) => {
+    switch (status) {
+      case 'pending':
+        return 'Pending'
+      case 'confirmed':
+        return 'Confirmed'
+      case 'processing':
+        return 'Processing'
+      case 'waiting_for_delivery':
+        return 'Waiting for Delivery'
+      case 'shipped':
+        return 'Shipped'
+      case 'delivered':
+        return 'Delivered'
+      case 'cancelled':
+        return 'Cancelled'
+      case 'refunded':
+        return 'Refunded'
+      default:
+        return status
+    }
+  }
+
+  const showStatusUpdateConfirmation = (order: Order, newStatus: Order['status']) => {
+    const currentStatus = getStoreOrderStatus(order, merchantStoreId, isAdmin)
+    const orderType = isAdmin ? 'order' : 'store order'
+    
+    let title = ''
+    let description = ''
+
+    switch (newStatus) {
+      case 'confirmed':
+        title = `Confirm ${orderType.charAt(0).toUpperCase() + orderType.slice(1)}`
+        description = `Are you sure you want to confirm ${orderType} #${order.orderNumber}? This action will change the status from "${getStatusDisplayName(currentStatus)}" to "Confirmed".`
+        break
+      case 'processing':
+        title = `Start Processing`
+        description = `Are you sure you want to start processing ${orderType} #${order.orderNumber}? This will change the status from "${getStatusDisplayName(currentStatus)}" to "Processing".`
+        break
+      case 'waiting_for_delivery':
+        title = `Ready for Delivery`
+        description = `Are you sure ${orderType} #${order.orderNumber} is ready for delivery? This will change the status from "${getStatusDisplayName(currentStatus)}" to "Waiting for Delivery".`
+        break
+      case 'shipped':
+        title = `Mark as Shipped`
+        description = `Are you sure you want to mark ${orderType} #${order.orderNumber} as shipped? This will change the status from "${getStatusDisplayName(currentStatus)}" to "Shipped".`
+        break
+      case 'delivered':
+        title = `Mark as Delivered`
+        description = `Are you sure you want to mark ${orderType} #${order.orderNumber} as delivered? This will change the status from "${getStatusDisplayName(currentStatus)}" to "Delivered".`
+        break
+      case 'cancelled':
+        title = `Cancel ${orderType.charAt(0).toUpperCase() + orderType.slice(1)}`
+        description = `Are you sure you want to cancel ${orderType} #${order.orderNumber}? This action cannot be undone.`
+        break
+      default:
+        title = `Update Status`
+        description = `Are you sure you want to update the status of ${orderType} #${order.orderNumber} to "${getStatusDisplayName(newStatus)}"?`
+    }
+
+    setConfirmDialog({
+      open: true,
+      order,
+      newStatus,
+      title,
+      description
+    })
+  }
+
   const handleQuickStatusUpdate = (order: Order, newStatus: Order['status']) => {
-    onUpdateStatus(order._id, newStatus)
+    showStatusUpdateConfirmation(order, newStatus)
+  }
+
+  const confirmStatusUpdate = () => {
+    if (confirmDialog.order && confirmDialog.newStatus) {
+      if (confirmDialog.newStatus === 'cancelled') {
+        onCancelOrder(confirmDialog.order._id)
+      } else {
+        onUpdateStatus(confirmDialog.order._id, confirmDialog.newStatus)
+      }
+      setConfirmDialog({
+        open: false,
+        order: null,
+        newStatus: null,
+        title: '',
+        description: ''
+      })
+    }
+  }
+
+  const cancelStatusUpdate = () => {
+    setConfirmDialog({
+      open: false,
+      order: null,
+      newStatus: null,
+      title: '',
+      description: ''
+    })
   }
 
   return (
@@ -635,7 +754,7 @@ export function OrderListView({
                               
                               {displayStatus !== 'delivered' && displayStatus !== 'cancelled' && canPerformStoreAction(order, merchantStoreId, isAdmin, 'cancelled') && (
                                 <DropdownMenuItem 
-                                  onClick={() => onCancelOrder(order._id)}
+                                  onClick={() => showStatusUpdateConfirmation(order, 'cancelled')}
                                   className="text-red-600"
                                 >
                                   <XCircle className="mr-2 h-4 w-4" />
@@ -681,6 +800,29 @@ export function OrderListView({
           </Button>
         </div>
       )}
+
+      {/* Status Update Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && cancelStatusUpdate()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelStatusUpdate}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmStatusUpdate}
+              className={confirmDialog.newStatus === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
+              {confirmDialog.newStatus === 'cancelled' ? 'Yes, Cancel Order' : 'Confirm Update'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

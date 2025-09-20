@@ -44,6 +44,22 @@ import { type Order, orderApi } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
+// Safe date formatting function to handle invalid dates
+const safeFormatDate = (dateString: string | Date | null | undefined): string => {
+  if (!dateString) return 'Not specified';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    return formatDate(dateString as string);
+  } catch (error) {
+    console.warn('Date formatting error:', error, 'for date:', dateString);
+    return 'Invalid date';
+  }
+};
+
 interface OrderDetailViewProps {
   order: Order
   storeName: string
@@ -78,7 +94,9 @@ const getStatusColor = (status: Order['status']) => {
   }
 }
 
-const getPaymentStatusColor = (status: Order['paymentStatus']) => {
+const getPaymentStatusColor = (status: Order['paymentStatus'] | undefined) => {
+  if (!status) return 'bg-gray-100 text-gray-800 border-gray-200';
+  
   switch (status) {
     case 'paid':
       return 'bg-green-100 text-green-800 border-green-200'
@@ -226,6 +244,41 @@ const getStoreOrderData = (order: Order, merchantStoreId: string | undefined, is
   }
 }
 
+// Helper function to format package type display
+const formatPackageDisplay = (variantInfo: any) => {
+  if (!variantInfo) return null;
+  
+  const packageQuantity = variantInfo.packageQuantity || 1;
+  const packageUnit = variantInfo.packageUnit;
+  const packageType = variantInfo.packageType;
+  
+  // Priority: packageUnit > packageType > fallback
+  let displayUnit = packageUnit || packageType || 'unit';
+  
+  // Handle common package type mappings if only packageType is available
+  if (!packageUnit && packageType) {
+    const typeMapping: Record<string, string> = {
+      'piece': 'ชิ้น',
+      'pack': 'แพ็ค', 
+      'box': 'กล่อง',
+      'case': 'ลัง',
+      'bottle': 'ขวด',
+      'bag': 'ถุง',
+      'tube': 'หลอด',
+      'roll': 'ม้วน'
+    };
+    displayUnit = typeMapping[packageType.toLowerCase()] || packageType;
+  }
+  
+  return {
+    quantity: packageQuantity,
+    unit: displayUnit,
+    type: packageType,
+    display: `${packageQuantity} ${displayUnit}`,
+    hasPackageData: !!(packageUnit || packageType)
+  };
+};
+
 // Helper function to check if merchant can perform actions on their store order
 const canPerformStoreAction = (order: Order, merchantStoreId: string | undefined, isAdmin: boolean, targetStatus: Order['status']): boolean => {
   if (isAdmin) {
@@ -284,6 +337,8 @@ export function OrderDetailView({
   
   // Fetch fresh order detail from API
   useEffect(() => {
+    console.log('🚀 useEffect fetchOrderDetail triggered for order ID:', order._id)
+    
     const fetchOrderDetail = async () => {
       if (!order._id) return
       
@@ -314,20 +369,42 @@ export function OrderDetailView({
         
         // Use cache busting parameter for fresh data
         const response = await orderApi.getOrder(order._id, true)
-        if (response?.data?.data) {
-          console.log('✅ Fresh order detail loaded:', response.data.data)
+        
+        // Extract order data from response - handle API response structure {success: true, data: {order: {...}}}
+        let orderData;
+        const apiResponse = response as any;
+        if (apiResponse?.data?.success && apiResponse?.data?.data?.order) {
+          orderData = apiResponse.data.data.order;
+        } else if (apiResponse?.data?.order) {
+          orderData = apiResponse.data.order;
+        } else if (apiResponse?.data && apiResponse.data.items) {
+          orderData = apiResponse.data;
+        } else {
+          orderData = apiResponse?.data;
+        }
+        
+        console.log('🔍 Extracted orderData:', orderData)
+        
+        if (orderData && orderData.items) {
+          console.log('✅ Fresh order detail loaded:', orderData)
           console.log('🔍 Fresh order items variantInfo check:');
-          response.data.data.items?.forEach((item: any, index: number) => {
-            console.log(`🔍 Fresh Item ${index + 1}:`, {
-              productName: item.product?.name,
-              hasVariant: !!item.variant,
-              hasVariantInfo: !!item.variantInfo,
-              variantInfo: item.variantInfo
-            });
+          orderData.items?.forEach((item: any, index: number) => {
+            console.log(`🔍 Fresh Item ${index + 1}: ${item.product?.name || 'Unknown Product'}`)
+            console.log(`  - hasVariant: ${!!item.variant}`)
+            console.log(`  - hasVariantInfo: ${!!item.variantInfo}`)
+            console.log(`  - variantInfo:`, item.variantInfo)
+            if (item.variantInfo) {
+              console.log(`  - packageType: ${item.variantInfo.packageType}`)
+              console.log(`  - packageUnit: ${item.variantInfo.packageUnit}`)
+              console.log(`  - packageQuantity: ${item.variantInfo.packageQuantity}`)
+            }
           });
           
-          setCurrentOrder(response.data.data)
+          setCurrentOrder(orderData)
           console.log('🔄 State updated with fresh data');
+        } else {
+          console.warn('⚠️ No valid order data found in response:', response);
+          setError('Order data format is unexpected. Please contact support.');
         }
       } catch (err: any) {
         console.error('❌ Failed to fetch order detail:', err)
@@ -348,7 +425,7 @@ export function OrderDetailView({
     }
     
     fetchOrderDetail()
-  }, [order._id, isAdmin, merchantStoreId, user, userStore])
+  }, [order._id])  // ลด dependencies เพื่อป้องกัน re-run บ่อย
   
   // Manual refresh function
   const handleRefresh = useCallback(async () => {
@@ -365,14 +442,21 @@ export function OrderDetailView({
       
       console.log('🔍 Raw API Response:', response)
       console.log('🔍 Response Data:', response?.data)
-      console.log('🔍 Order Data (checking all paths):', {
-        directData: response?.data,
-        nestedData: (response?.data as any)?.data,
-        orderKey: (response?.data as any)?.order
-      })
       
-      // Based on logs showing {order: {...}}, the data is at response.data.order
-      const orderData = ((response?.data as any)?.order || (response?.data as any)?.data || response?.data) as any
+      // Extract order data from response - handle API response structure {success: true, data: {order: {...}}}
+      let orderData;
+      const apiResponse = response as any;
+      if (apiResponse?.data?.success && apiResponse?.data?.data?.order) {
+        orderData = apiResponse.data.data.order;
+      } else if (apiResponse?.data?.order) {
+        orderData = apiResponse.data.order;
+      } else if (apiResponse?.data && apiResponse.data.items) {
+        orderData = apiResponse.data;
+      } else {
+        orderData = apiResponse?.data;
+      }
+      
+      console.log('🔍 Extracted orderData:', orderData)
       
       if (orderData && orderData.items) {
         // Log raw items before setting state
@@ -388,14 +472,22 @@ export function OrderDetailView({
         
         // Debug variant info after refresh
         if (orderData.items) {
-          console.log('� Fresh order items variantInfo check:')
+          console.log('🔍 Fresh order items variantInfo check:')
           orderData.items.forEach((item: any, index: number) => {
             console.log(`🔍 Fresh Item ${index + 1}: ${item.product?.name}`)
             console.log(`  - hasVariant: ${!!item.variant}`)
             console.log(`  - hasVariantInfo: ${!!item.variantInfo}`)
             console.log(`  - variantInfo:`, item.variantInfo)
+            if (item.variantInfo) {
+              console.log(`  - packageType: ${item.variantInfo.packageType}`)
+              console.log(`  - packageUnit: ${item.variantInfo.packageUnit}`)
+              console.log(`  - packageQuantity: ${item.variantInfo.packageQuantity}`)
+            }
           })
         }
+      } else {
+        console.warn('⚠️ No valid order data found in response:', response)
+        setError('Could not find order data in API response')
       }
     } catch (err: any) {
       console.error('❌ Manual refresh failed:', err)
@@ -416,13 +508,47 @@ export function OrderDetailView({
         orderItemsLength: order?.items?.length
       })
       
-      // Only sync from props if currentOrder is empty or has fewer items
-      // This prevents overriding fresh data from manual refresh
-      if (!currentOrder?.items || (order?.items && order.items.length > currentOrder.items.length)) {
+      // Only sync from props if currentOrder is empty 
+      // AND don't override if currentOrder has better data (like variantInfo)
+      const currentOrderHasVariantInfo = currentOrder?.items?.some((item: any) => !!item.variantInfo);
+      const propOrderHasVariantInfo = order?.items?.some((item: any) => !!item.variantInfo);
+      
+      console.log('🔍 Data quality check:', {
+        currentOrderHasVariantInfo,
+        propOrderHasVariantInfo,
+        shouldSync: !currentOrder?.items || (!currentOrderHasVariantInfo && propOrderHasVariantInfo)
+      })
+      
+      if (!currentOrder?.items || (!currentOrderHasVariantInfo && propOrderHasVariantInfo)) {
         console.log('🔄 Syncing from props to currentOrder')
+        
+        // Check if the prop data has variantInfo
+        if (order?.items) {
+          console.log('🔍 Prop order items variantInfo check:')
+          order.items.forEach((item: any, index) => {
+            console.log(`  Item ${index + 1}: ${item.productName}`, {
+              hasVariant: !!item.variant,
+              hasVariantInfo: !!item.variantInfo,
+              variantInfo: item.variantInfo
+            })
+          })
+        }
+        
         setCurrentOrder(order)
       } else {
-        console.log('🔒 Keeping currentOrder (has better data)')
+        console.log('🔒 Keeping currentOrder (has better variant data or same quality)')
+        
+        // Debug current order to see what we're keeping
+        if (currentOrder?.items) {
+          console.log('🔍 Current order items variantInfo check:')
+          currentOrder.items.forEach((item: any, index) => {
+            console.log(`  Current Item ${index + 1}: ${item.productName || 'Unknown'}`, {
+              hasVariant: !!item.variant,
+              hasVariantInfo: !!item.variantInfo,
+              variantInfo: item.variantInfo
+            })
+          })
+        }
       }
     }
   }, [order, isLoading, currentOrder?.items?.length])
@@ -584,6 +710,28 @@ export function OrderDetailView({
     canPerformStoreAction(currentOrder, merchantStoreId, isAdmin, status as Order['status'])
   )
 
+  // Safety check for currentOrder
+  if (!currentOrder || !currentOrder._id) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Button variant="outline" size="sm" onClick={onBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Orders
+          </Button>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+            <p className="text-lg font-medium">Order not found</p>
+            <p className="text-muted-foreground">The order data could not be loaded.</p>
+            <Button onClick={onBack} className="mt-4">Return to Orders</Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with Refresh Button */}
@@ -630,9 +778,9 @@ export function OrderDetailView({
             Back to Orders
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Order #{currentOrder.orderNumber}</h1>
+            <h1 className="text-2xl font-bold">Order #{currentOrder.orderNumber || 'Unknown'}</h1>
             <p className="text-muted-foreground">
-              Placed on {formatDate(currentOrder.createdAt)}
+              Placed on {safeFormatDate(currentOrder.createdAt)}
             </p>
           </div>
         </div>
@@ -663,7 +811,7 @@ export function OrderDetailView({
                 <DialogHeader>
                   <DialogTitle>Update Order Status</DialogTitle>
                   <DialogDescription>
-                    Change the status of order #{currentOrder.orderNumber}
+                    Change the status of order #{currentOrder.orderNumber || 'Unknown'}
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -720,7 +868,7 @@ export function OrderDetailView({
                 <DialogHeader>
                   <DialogTitle>Cancel Order</DialogTitle>
                   <DialogDescription>
-                    Are you sure you want to cancel order #{currentOrder.orderNumber}?
+                    Are you sure you want to cancel order #{currentOrder.orderNumber || 'Unknown'}?
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -762,11 +910,11 @@ export function OrderDetailView({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Order Number</p>
-                <p className="font-mono">{currentOrder.orderNumber}</p>
+                <p className="font-mono">{currentOrder.orderNumber || 'Unknown'}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Order Date</p>
-                <p>{formatDate(currentOrder.createdAt)}</p>
+                <p>{safeFormatDate(currentOrder.createdAt)}</p>
               </div>
             </div>
             
@@ -792,9 +940,9 @@ export function OrderDetailView({
                 <p className="text-sm font-medium text-muted-foreground">Payment Status</p>
                 <Badge 
                   variant="outline" 
-                  className={`w-fit ${getPaymentStatusColor(currentOrder.paymentStatus)}`}
+                  className={`w-fit ${getPaymentStatusColor(currentOrder.paymentStatus || 'pending')}`}
                 >
-                  {currentOrder.paymentStatus}
+                  {currentOrder.paymentStatus || 'pending'}
                 </Badge>
               </div>
             </div>
@@ -809,7 +957,7 @@ export function OrderDetailView({
             {order.estimatedDelivery && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Estimated Delivery</p>
-                <p>{formatDate(order.estimatedDelivery)}</p>
+                <p>{safeFormatDate(order.estimatedDelivery)}</p>
               </div>
             )}
 
@@ -897,9 +1045,9 @@ export function OrderDetailView({
                 <p className="text-sm font-medium text-muted-foreground">Payment Status</p>
                 <Badge 
                   variant="outline" 
-                  className={`w-fit ${getPaymentStatusColor(order.paymentStatus)}`}
+                  className={`w-fit ${getPaymentStatusColor(order.paymentStatus || 'pending')}`}
                 >
-                  {order.paymentStatus}
+                  {order.paymentStatus || 'pending'}
                 </Badge>
               </div>
             </div>
@@ -953,53 +1101,91 @@ export function OrderDetailView({
                 ? { name: 'Unknown Product', _id: orderItem.product } 
                 : orderItem.product
               
-              // Debug: Log item data to console in development
-              if (process.env.NODE_ENV === 'development') {
-                console.log('Order Item:', { 
-                  index, 
-                  productName: product.name, 
-                  hasVariant: !!orderItem.variant,
-                  hasVariantInfo: !!orderItem.variantInfo,
-                  variantInfo: orderItem.variantInfo,
-                  variant: orderItem.variant,
-                  packageDisplay: orderItem.variantInfo ? {
-                    packageType: orderItem.variantInfo.packageType,
-                    packageUnit: orderItem.variantInfo.packageUnit,
-                    packageQuantity: orderItem.variantInfo.packageQuantity,
-                    displayText: `${orderItem.variantInfo.packageQuantity || 1} ${orderItem.variantInfo.packageUnit || orderItem.variantInfo.packageType}`
-                  } : 'No variantInfo'
-                });
-              }
+              // Enhanced debugging for package type issues
+              // Try to get variant info from multiple sources
+              const variantInfoSources = {
+                direct: orderItem.variantInfo,
+                nested: (orderItem as any).variant?.variantInfo,
+                packageType: (orderItem as any).variant?.packageType
+              };
               
-              return (
+              const resolvedVariantInfo = variantInfoSources.direct || 
+                                        variantInfoSources.nested || 
+                                        variantInfoSources.packageType || 
+                                        null;
+              
+              const packageInfo = formatPackageDisplay(resolvedVariantInfo);
+              console.log(`📦 Order Item ${index + 1} Debug:`, {
+                index,
+                productName: product.name,
+                hasVariant: !!orderItem.variant,
+                variantId: typeof orderItem.variant === 'string' ? orderItem.variant : orderItem.variant?._id,
+                hasVariantInfo: !!orderItem.variantInfo,
+                variantInfo: orderItem.variantInfo,
+                variantInfoSources,
+                resolvedVariantInfo,
+                fullOrderItem: orderItem,
+                packageInfo
+              });              return (
                 <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex-1">
                     <h4 className="font-medium">{product.name}</h4>
-                    {/* Package Type Information */}
-                    {orderItem.variantInfo ? (
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        {orderItem.variantInfo.packageType && (
-                          <p className="font-medium text-blue-600">
-                            📦 {orderItem.variantInfo.packageQuantity || 1} {orderItem.variantInfo.packageUnit || orderItem.variantInfo.packageType} 
-                            <span className="text-gray-500"> ({orderItem.variantInfo.packageType})</span>
+                    {/* Enhanced Package Type Information */}
+                    {/* Try multiple sources for variant info */}
+                    {(() => {
+                      // Try to get variant info from multiple sources
+                      const variantInfo = orderItem.variantInfo || 
+                                        (orderItem as any).variant?.variantInfo ||
+                                        (orderItem as any).variant?.packageType ||
+                                        null;
+                      
+                      console.log(`🔍 Variant Info Resolution for ${product.name}:`, {
+                        directVariantInfo: orderItem.variantInfo,
+                        nestedVariantInfo: (orderItem as any).variant?.variantInfo,
+                        packageTypeInfo: (orderItem as any).variant?.packageType,
+                        resolvedVariantInfo: variantInfo
+                      });
+                      
+                      return variantInfo ? (
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          {/* Package information display using helper function */}
+                          {packageInfo?.hasPackageData ? (
+                            <p className="font-medium text-blue-600">
+                              📦 {packageInfo.display}
+                              {packageInfo.type && packageInfo.type !== packageInfo.unit && (
+                                <span className="text-gray-500"> ({packageInfo.type})</span>
+                              )}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-amber-600">
+                              📦 Package type: Not specified
+                            </p>
+                          )}
+                          {/* Variant name display */}
+                          {variantInfo.name && variantInfo.name !== 'Default' && (
+                            <p>Variant: {variantInfo.name}</p>
+                          )}
+                          {/* Attributes display */}
+                          {variantInfo.attributes && Object.keys(variantInfo.attributes).length > 0 && (
+                            <p>Attributes: {Object.entries(variantInfo.attributes).map(([key, value]) => `${key}: ${value}`).join(', ')}</p>
+                          )}
+                          {/* Price comparison */}
+                          {variantInfo.price && variantInfo.price !== orderItem.price && (
+                            <p className="text-xs text-orange-600">
+                              Ordered at: {formatCurrency(orderItem.price)} (Original: {formatCurrency(variantInfo.price)})
+                            </p>
+                          )}
+                        </div>
+                      ) : orderItem.variant && (
+                        <div className="text-sm text-red-500 space-y-1">
+                          <p>⚠️ Variant information missing</p>
+                          <p className="text-xs">Variant ID: {typeof orderItem.variant === 'string' ? orderItem.variant : orderItem.variant._id || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Package type cannot be displayed without variant details. Try refreshing the page.
                           </p>
-                        )}
-                        {orderItem.variantInfo.name && orderItem.variantInfo.name !== 'Default' && (
-                          <p>Variant: {orderItem.variantInfo.name}</p>
-                        )}
-                        {orderItem.variantInfo.attributes && Object.keys(orderItem.variantInfo.attributes).length > 0 && (
-                          <p>Attributes: {Object.entries(orderItem.variantInfo.attributes).map(([key, value]) => `${key}: ${value}`).join(', ')}</p>
-                        )}
-                        {/* Show price difference if exists */}
-                        {orderItem.variantInfo.price !== orderItem.price && (
-                          <p className="text-xs text-orange-600">
-                            Ordered at: {formatCurrency(orderItem.price)} (Original: {formatCurrency(orderItem.variantInfo.price)})
-                          </p>
-                        )}
-                      </div>
-                    ) : orderItem.variant && (
-                      <p className="text-sm text-red-500">⚠️ Package info missing - ID: {typeof orderItem.variant === 'string' ? orderItem.variant : orderItem.variant._id}</p>
-                    )}
+                        </div>
+                      );
+                    })()}
                     <p className="text-sm text-muted-foreground">
                       Quantity: {orderItem.quantity} × {formatCurrency(orderItem.price)}
                     </p>
