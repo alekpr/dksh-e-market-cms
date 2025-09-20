@@ -62,6 +62,7 @@ interface OrderListViewProps {
   orderStats: OrderStats
   storeName: string
   isAdmin: boolean
+  merchantStoreId?: string // Add merchant store ID for store-specific functionality
   onView: (order: Order) => void
   onUpdateStatus: (orderId: string, status: Order['status'], notes?: string) => void
   onAssignOrder: (orderId: string, assignedTo: string, notes?: string) => void
@@ -71,6 +72,110 @@ interface OrderListViewProps {
   onFilterPaymentStatusChange: (status: string) => void
   onSortChange: (field: string, order: 'asc' | 'desc') => void
   onPageChange: (page: number) => void
+}
+
+// Helper function to get store order status for merchants
+const getStoreOrderStatus = (order: Order, merchantStoreId: string | undefined, isAdmin: boolean): Order['status'] => {
+  if (isAdmin || !merchantStoreId) {
+    return order.status
+  }
+  
+  // Find the store order for this merchant's store
+  const storeOrder = order.storeOrders?.find(so => {
+    const storeId = so.store && typeof so.store === 'object' ? (so.store as any)._id : so.store
+    return storeId === merchantStoreId
+  })
+  
+  return (storeOrder?.status as Order['status']) || order.status
+}
+
+// Helper function to check if merchant can perform actions on their store order
+const canPerformStoreAction = (order: Order, merchantStoreId: string | undefined, isAdmin: boolean, targetStatus: Order['status']): boolean => {
+  if (isAdmin) {
+    return true
+  }
+  
+  if (!merchantStoreId) {
+    return false
+  }
+  
+  const currentStoreStatus = getStoreOrderStatus(order, merchantStoreId, isAdmin)
+  
+  // Define valid transitions for store orders
+  const validTransitions: Record<Order['status'], Order['status'][]> = {
+    'pending': ['confirmed', 'cancelled'],
+    'confirmed': ['processing', 'cancelled'],
+    'processing': ['waiting_for_delivery', 'cancelled'],
+    'waiting_for_delivery': ['shipped'],
+    'shipped': ['delivered'],
+    'delivered': [],
+    'cancelled': [],
+    'refunded': []
+  }
+  
+  return validTransitions[currentStoreStatus]?.includes(targetStatus) || false
+}
+
+// Helper function to calculate stats from store orders for merchants
+const calculateStoreStats = (orders: Order[], merchantStoreId: string | undefined, isAdmin: boolean): OrderStats => {
+  const stats: OrderStats = {
+    total: 0,
+    pending: 0,
+    confirmed: 0,
+    processing: 0,
+    waiting_for_delivery: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+    refunded: 0
+  }
+
+  if (isAdmin || !merchantStoreId) {
+    // For admin, use the provided orderStats (calculated from main orders)
+    return stats // Will be overridden by props
+  }
+
+  // For merchants, calculate stats from store orders
+  orders.forEach((order) => {
+    const storeOrder = order.storeOrders?.find(so => {
+      const storeId = so.store && typeof so.store === 'object' ? (so.store as any)._id : so.store
+      return storeId === merchantStoreId
+    })
+
+    if (storeOrder) {
+      stats.total++
+      const status = storeOrder.status as Order['status']
+      
+      switch (status) {
+        case 'pending':
+          stats.pending++
+          break
+        case 'confirmed':
+          stats.confirmed++
+          break
+        case 'processing':
+          stats.processing++
+          break
+        case 'waiting_for_delivery':
+          stats.waiting_for_delivery++
+          break
+        case 'shipped':
+          stats.shipped++
+          break
+        case 'delivered':
+          stats.delivered++
+          break
+        case 'cancelled':
+          stats.cancelled++
+          break
+        case 'refunded':
+          stats.refunded++
+          break
+      }
+    }
+  })
+
+  return stats
 }
 
 const getStatusColor = (status: Order['status']) => {
@@ -147,6 +252,7 @@ export function OrderListView({
   orderStats,
   storeName,
   isAdmin,
+  merchantStoreId,
   onView,
   onUpdateStatus,
   onCancelOrder,
@@ -156,6 +262,11 @@ export function OrderListView({
   onPageChange,
 }: OrderListViewProps) {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm)
+
+  // Calculate store-specific stats for merchants
+  const displayStats = isAdmin 
+    ? orderStats 
+    : calculateStoreStats(orders, merchantStoreId, isAdmin)
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -192,8 +303,10 @@ export function OrderListView({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{orderStats.total}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total {!isAdmin ? '(Store)' : ''}
+                </p>
+                <p className="text-2xl font-bold">{displayStats.total}</p>
               </div>
               <Package className="w-8 h-8 text-muted-foreground" />
             </div>
@@ -205,7 +318,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">{orderStats.pending}</p>
+                <p className="text-2xl font-bold text-yellow-600">{displayStats.pending}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-600" />
             </div>
@@ -217,7 +330,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Confirmed</p>
-                <p className="text-2xl font-bold text-blue-600">{orderStats.confirmed}</p>
+                <p className="text-2xl font-bold text-blue-600">{displayStats.confirmed}</p>
               </div>
               <CheckCircle2 className="w-8 h-8 text-blue-600" />
             </div>
@@ -229,7 +342,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Processing</p>
-                <p className="text-2xl font-bold text-orange-600">{orderStats.processing}</p>
+                <p className="text-2xl font-bold text-orange-600">{displayStats.processing}</p>
               </div>
               <Package className="w-8 h-8 text-orange-600" />
             </div>
@@ -241,7 +354,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Waiting for Delivery</p>
-                <p className="text-2xl font-bold text-indigo-600">{orderStats.waiting_for_delivery}</p>
+                <p className="text-2xl font-bold text-indigo-600">{displayStats.waiting_for_delivery}</p>
               </div>
               <Clock className="w-8 h-8 text-indigo-600" />
             </div>
@@ -253,7 +366,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Shipped</p>
-                <p className="text-2xl font-bold text-purple-600">{orderStats.shipped}</p>
+                <p className="text-2xl font-bold text-purple-600">{displayStats.shipped}</p>
               </div>
               <Truck className="w-8 h-8 text-purple-600" />
             </div>
@@ -265,7 +378,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Delivered</p>
-                <p className="text-2xl font-bold text-green-600">{orderStats.delivered}</p>
+                <p className="text-2xl font-bold text-green-600">{displayStats.delivered}</p>
               </div>
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
@@ -277,7 +390,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Cancelled</p>
-                <p className="text-2xl font-bold text-red-600">{orderStats.cancelled}</p>
+                <p className="text-2xl font-bold text-red-600">{displayStats.cancelled}</p>
               </div>
               <XCircle className="w-8 h-8 text-red-600" />
             </div>
@@ -289,7 +402,7 @@ export function OrderListView({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Refunded</p>
-                <p className="text-2xl font-bold text-gray-600">{orderStats.refunded}</p>
+                <p className="text-2xl font-bold text-gray-600">{displayStats.refunded}</p>
               </div>
               <RotateCcw className="w-8 h-8 text-gray-600" />
             </div>
@@ -403,6 +516,9 @@ export function OrderListView({
                            ? { name: 'Unknown', email: '' }
                            : order.user)
                         : { name: 'Unknown', email: '' }
+
+                    // Get the actual status to display (store order status for merchants, main order status for admins)
+                    const displayStatus = getStoreOrderStatus(order, merchantStoreId, isAdmin)
                     
                     return (
                       <TableRow key={order._id}>
@@ -436,11 +552,16 @@ export function OrderListView({
                         <TableCell>
                           <Badge 
                             variant="outline" 
-                            className={`flex items-center gap-1 w-fit ${getStatusColor(order.status)}`}
+                            className={`flex items-center gap-1 w-fit ${getStatusColor(displayStatus)}`}
                           >
-                            {getStatusIcon(order.status)}
-                            {order.status.replace('_', ' ')}
+                            {getStatusIcon(displayStatus)}
+                            {displayStatus.replace('_', ' ')}
                           </Badge>
+                          {!isAdmin && displayStatus !== order.status && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Main order: {order.status}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -466,16 +587,17 @@ export function OrderListView({
                                 View Details
                               </DropdownMenuItem>
                               
-                              {order.status === 'pending' && (
+                              {/* Use store-specific status for action conditions */}
+                              {displayStatus === 'pending' && canPerformStoreAction(order, merchantStoreId, isAdmin, 'confirmed') && (
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusUpdate(order, 'confirmed')}
                                 >
                                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                                  Confirm Order
+                                  Confirm {isAdmin ? 'Order' : 'Store Order'}
                                 </DropdownMenuItem>
                               )}
                               
-                              {order.status === 'confirmed' && (
+                              {displayStatus === 'confirmed' && canPerformStoreAction(order, merchantStoreId, isAdmin, 'processing') && (
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusUpdate(order, 'processing')}
                                 >
@@ -484,7 +606,7 @@ export function OrderListView({
                                 </DropdownMenuItem>
                               )}
                               
-                              {order.status === 'processing' && (
+                              {displayStatus === 'processing' && canPerformStoreAction(order, merchantStoreId, isAdmin, 'waiting_for_delivery') && (
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusUpdate(order, 'waiting_for_delivery')}
                                 >
@@ -493,7 +615,7 @@ export function OrderListView({
                                 </DropdownMenuItem>
                               )}
                               
-                              {order.status === 'waiting_for_delivery' && (
+                              {displayStatus === 'waiting_for_delivery' && canPerformStoreAction(order, merchantStoreId, isAdmin, 'shipped') && (
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusUpdate(order, 'shipped')}
                                 >
@@ -502,7 +624,7 @@ export function OrderListView({
                                 </DropdownMenuItem>
                               )}
                               
-                              {order.status === 'shipped' && (
+                              {displayStatus === 'shipped' && canPerformStoreAction(order, merchantStoreId, isAdmin, 'delivered') && (
                                 <DropdownMenuItem 
                                   onClick={() => handleQuickStatusUpdate(order, 'delivered')}
                                 >
@@ -511,13 +633,13 @@ export function OrderListView({
                                 </DropdownMenuItem>
                               )}
                               
-                              {['pending', 'confirmed', 'processing', 'waiting_for_delivery'].includes(order.status) && (
+                              {displayStatus !== 'delivered' && displayStatus !== 'cancelled' && canPerformStoreAction(order, merchantStoreId, isAdmin, 'cancelled') && (
                                 <DropdownMenuItem 
                                   onClick={() => onCancelOrder(order._id)}
                                   className="text-red-600"
                                 >
                                   <XCircle className="mr-2 h-4 w-4" />
-                                  Cancel Order
+                                  Cancel {isAdmin ? 'Order' : 'Store Order'}
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>

@@ -30,6 +30,21 @@ import {
 } from "lucide-react"
 import { DebugPanel } from '@/components/debug-panel'
 
+// Helper function to get store order status for merchants
+const getStoreOrderStatus = (order: RecentOrder, merchantStoreId: string | undefined, isAdmin: boolean): string => {
+  if (isAdmin || !merchantStoreId) {
+    return order.status
+  }
+  
+  // Find the store order for this merchant's store
+  const storeOrder = order.storeOrders?.find(so => {
+    const storeId = so.store && typeof so.store === 'object' ? (so.store as any)._id : so.store
+    return storeId === merchantStoreId
+  })
+  
+  return storeOrder?.status || order.status
+}
+
 interface MerchantStats {
   totalRevenue: number
   totalOrders: number
@@ -48,6 +63,13 @@ interface RecentOrder {
   createdAt: string
   customerName?: string
   items: any[]
+  storeOrders?: Array<{
+    store: string;
+    items: string[];
+    subtotal: number;
+    status: string;
+    _id: string;
+  }>;
 }
 
 export default function DashboardPage() {
@@ -396,32 +418,37 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {recentOrders.slice(0, 5).map((order) => (
-                          <div key={order._id} className="flex items-center gap-3 p-3 border rounded-lg">
-                            <ShoppingCart className={`h-4 w-4 ${
-                              order.status === 'completed' ? 'text-green-600' :
-                              order.status === 'pending' ? 'text-yellow-600' :
-                              order.status === 'cancelled' ? 'text-red-600' :
-                              'text-blue-600'
-                            }`} />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">
-                                Order #{order._id.slice(-8)} - ฿{order.totalAmount.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {order.status} • {new Date(order.createdAt).toLocaleDateString()} • {order.items?.length || 0} items
-                              </p>
+                        {recentOrders.slice(0, 5).map((order) => {
+                          // Get the appropriate status to display (store order status for merchants, main order status for admins)
+                          const displayStatus = getStoreOrderStatus(order, user?.merchantInfo?.storeId, isAdmin)
+                          
+                          return (
+                            <div key={order._id} className="flex items-center gap-3 p-3 border rounded-lg">
+                              <ShoppingCart className={`h-4 w-4 ${
+                                displayStatus === 'completed' ? 'text-green-600' :
+                                displayStatus === 'pending' ? 'text-yellow-600' :
+                                displayStatus === 'cancelled' ? 'text-red-600' :
+                                'text-blue-600'
+                              }`} />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">
+                                  Order #{order._id.slice(-8)} - ฿{order.totalAmount.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {displayStatus} • {new Date(order.createdAt).toLocaleDateString()} • {order.items?.length || 0} items
+                                </p>
+                              </div>
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                displayStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                                displayStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                displayStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {displayStatus}
+                              </span>
                             </div>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {order.status}
-                            </span>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </CardContent>
                   </Card>

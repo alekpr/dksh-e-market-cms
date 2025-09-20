@@ -388,6 +388,15 @@ export interface OrderItem {
   price: number;
   total: number;
   variant?: ProductVariant;
+  variantInfo?: {
+    name: string;
+    title?: string;
+    attributes?: Record<string, string>;
+    price: number;
+    packageType?: string;
+    packageUnit?: string;
+    packageQuantity?: number;
+  };
 }
 
 export interface OrderAddress {
@@ -908,6 +917,39 @@ class ApiClient {
       }
       
       console.log(`API Success Response from ${url}:`, data);
+      
+      // Special logging for order API responses to track variantInfo
+      if (url.includes('/orders/') && !url.includes('/orders?')) {
+        console.log('📦 Order API Response - checking variantInfo:');
+        const order = data?.data?.order || data?.data;
+        if (order?.items) {
+          console.log(`📦 Found ${order.items.length} items in order response:`);
+          order.items.forEach((item: any, index: number) => {
+            console.log(`📦 Item ${index + 1}:`, {
+              productName: item.product?.name,
+              hasVariant: !!item.variant,
+              hasVariantInfo: !!item.variantInfo,
+              variantInfo: item.variantInfo,
+              fullItem: item
+            });
+          });
+        }
+        if (order?.storeOrders) {
+          console.log(`📦 Found ${order.storeOrders.length} store orders:`);
+          order.storeOrders.forEach((storeOrder: any, storeIndex: number) => {
+            console.log(`📦 Store Order ${storeIndex + 1} items:`);
+            storeOrder.items?.forEach((item: any, itemIndex: number) => {
+              console.log(`📦 Store Item ${itemIndex + 1}:`, {
+                productName: item.product?.name,
+                hasVariant: !!item.variant,
+                hasVariantInfo: !!item.variantInfo,
+                variantInfo: item.variantInfo
+              });
+            });
+          });
+        }
+      }
+      
       return data
     } else {
       if (!response.ok) {
@@ -1643,8 +1685,11 @@ export const orderApi = {
   },
 
   // Get a specific order by ID
-  getOrder: (id: string) => 
-    apiClient.get<{ success: boolean; data: Order }>(`/orders/${id}`),
+  getOrder: (id: string, bustCache = false) => {
+    const url = bustCache ? `/orders/${id}?_t=${Date.now()}` : `/orders/${id}`;
+    console.log(`🔍 API getOrder called: ${url}, bustCache: ${bustCache}`);
+    return apiClient.get<{ success: boolean; data: Order }>(url);
+  },
 
   // Create a new order (guest orders)
   createOrder: (data: CreateOrderRequest) =>
@@ -1657,6 +1702,10 @@ export const orderApi = {
   // Update order status
   updateOrderStatus: (id: string, data: OrderStatusUpdateRequest) =>
     apiClient.put<{ success: boolean; data: Order }>(`/orders/${id}/status`, data),
+
+  // Update store order status (for merchants - updates only their store's portion of the order)
+  updateStoreOrderStatus: (orderId: string, storeId: string, data: OrderStatusUpdateRequest) =>
+    apiClient.put<{ success: boolean; data: Order }>(`/orders/${orderId}/store/${storeId}/status`, data),
 
   // Assign order to merchant/staff
   assignOrder: (id: string, data: OrderAssignmentRequest) =>

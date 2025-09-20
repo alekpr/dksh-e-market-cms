@@ -39,6 +39,7 @@ export default function OrdersPage() {
       pending: 0,
       confirmed: 0,
       processing: 0,
+      waiting_for_delivery: 0,
       shipped: 0,
       delivered: 0,
       cancelled: 0,
@@ -47,6 +48,7 @@ export default function OrdersPage() {
     canManageOrders = true,
     isAdmin = false,
     storeName = 'Your Store',
+    merchantStoreId,
     handleView = () => {},
     handleUpdateStatus = () => {},
     handleAssignOrder = () => {},
@@ -118,6 +120,7 @@ export default function OrdersPage() {
               order={selectedOrder}
               storeName={storeName}
               isAdmin={isAdmin}
+              merchantStoreId={merchantStoreId}
               onUpdateStatus={handleUpdateStatus}
               onAssignOrder={handleAssignOrder}
               onCancelOrder={handleCancelOrder}
@@ -141,6 +144,7 @@ export default function OrdersPage() {
               orderStats={orderStats}
               storeName={storeName}
               isAdmin={isAdmin}
+              merchantStoreId={merchantStoreId}
               onView={handleView}
               onUpdateStatus={handleUpdateStatus}
               onAssignOrder={handleAssignOrder}

@@ -280,12 +280,24 @@ export function useOrderManagement() {
     notes?: string
   ) => {
     try {
-      const response = await orderApi.updateOrderStatus(orderId, { status, notes })
+      let response
+      
+      // For merchants, use store-specific status update to only update their store order
+      if (isMerchant && user?.merchantInfo?.storeId) {
+        console.log(`🏪 Merchant updating store order status for store ${user.merchantInfo.storeId}`)
+        response = await orderApi.updateStoreOrderStatus(orderId, user.merchantInfo.storeId, { status, notes })
+      } else {
+        // For admins, use the general order status update
+        console.log(`🔧 Admin updating general order status`)
+        response = await orderApi.updateOrderStatus(orderId, { status, notes })
+      }
       
       if (response.success) {
         toast({
           title: 'Success',
-          description: 'Order status updated successfully'
+          description: isMerchant 
+            ? 'Store order status updated successfully' 
+            : 'Order status updated successfully'
         })
         
         // Update the order in the list
@@ -309,7 +321,7 @@ export function useOrderManagement() {
         variant: 'destructive'
       })
     }
-  }, [toast, selectedOrder, loadOrders])
+  }, [toast, selectedOrder, loadOrders, isMerchant, user])
 
   // Handle order assignment
   const handleAssignOrder = useCallback(async (
@@ -415,6 +427,7 @@ export function useOrderManagement() {
     isAdmin,
     isMerchant,
     storeName,
+    merchantStoreId: user?.merchantInfo?.storeId,
     
     // Actions
     handleView,
