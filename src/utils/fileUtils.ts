@@ -8,7 +8,7 @@
 export function getPublicFileUrl(fileIdOrPath: string): string {
   // Use VITE_API_BASE_URL if available (includes /api/v1), otherwise use VITE_API_URL
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://54.251.126.43:3000'
   
   // Check if fileIdOrPath is already a full path (starts with /api/v1/files/)
   if (fileIdOrPath.startsWith('/api/v1/files/')) {
@@ -36,7 +36,7 @@ export function getPublicFileUrl(fileIdOrPath: string): string {
  * Get authenticated file URL (requires login)
  */
 export function getAuthenticatedFileUrl(fileId: string): string {
-  const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+  const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000'
   return `${apiUrl}/api/v1/files/${fileId}`
 }
 

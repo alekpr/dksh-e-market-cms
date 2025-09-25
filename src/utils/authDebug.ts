@@ -42,7 +42,7 @@ export const testApiAuth = async () => {
       return { success: false, message: 'No authentication token' }
     }
 
-    const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+    const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000'
     
     // Test with a simple protected endpoint
     const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
