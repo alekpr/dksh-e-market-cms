@@ -35,14 +35,18 @@ const userStatusConfig = {
   active: { label: 'Active', variant: 'default' as const },
   suspended: { label: 'Suspended', variant: 'destructive' as const },
   inactive: { label: 'Inactive', variant: 'outline' as const },
-}
+} as const
 
-// User role configuration
+// User role configuration  
 const userRoleConfig = {
   customer: { label: 'Customer', variant: 'outline' as const },
   merchant: { label: 'Merchant', variant: 'secondary' as const },
   admin: { label: 'Admin', variant: 'default' as const },
-}
+} as const
+
+// Type helper for safe status/role access
+type UserStatus = keyof typeof userStatusConfig
+type UserRole = keyof typeof userRoleConfig
 
 export const UserListView: React.FC<UserListViewProps> = ({
   users,
@@ -74,7 +78,10 @@ export const UserListView: React.FC<UserListViewProps> = ({
       header: "Role",
       cell: ({ row }) => {
         const role = row.getValue("role") as User['role']
-        const config = userRoleConfig[role]
+        // Ensure role exists in config with type safety
+        const safeRole: UserRole = (role && role in userRoleConfig) ? role as UserRole : 'customer'
+        const config = userRoleConfig[safeRole]
+        
         return (
           <Badge variant={config.variant}>
             {config.label}
@@ -86,8 +93,18 @@ export const UserListView: React.FC<UserListViewProps> = ({
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.original.status || (row.original.active ? 'active' : 'inactive')
-        const config = userStatusConfig[status as keyof typeof userStatusConfig] || userStatusConfig.inactive
+        const user = row.original
+        // Determine the status with proper fallback and type safety
+        let status: UserStatus = 'inactive'
+        
+        if (user.status && user.status in userStatusConfig) {
+          status = user.status as UserStatus
+        } else if (user.active) {
+          status = 'active'
+        }
+        
+        const config = userStatusConfig[status]
+        
         return (
           <Badge variant={config.variant}>
             {config.label}
