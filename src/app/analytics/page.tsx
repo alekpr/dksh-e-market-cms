@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
   };
 
   const isMerchant = getUserRole() === 'merchant';
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://54.251.126.43:3000/api/v1';
   const baseUrl = isMerchant ? `${apiBaseUrl}/analytics/merchant` : `${apiBaseUrl}/analytics`;
 
   useEffect(() => {
