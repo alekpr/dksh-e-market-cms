@@ -3,7 +3,7 @@
  * Complete form with product selection and pricing management
  */
 import { useState, useCallback } from 'react'
-import { CalendarDays, Package, Tag, Zap } from 'lucide-react'
+import { CalendarDays, Package, Tag, Zap, Gift } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -66,7 +66,8 @@ interface PromotionFormSimplifiedProps {
 // Options for selects
 const promotionTypes = [
   { value: 'featured_products', label: 'Featured Products', description: 'Highlight and promote specific products with optional discounts' },
-  { value: 'flash_sale', label: 'Flash Sale', description: 'Time-limited special pricing on selected products' }
+  { value: 'flash_sale', label: 'Flash Sale', description: 'Time-limited special pricing on selected products' },
+  { value: 'buy_x_get_y', label: 'Buy X Get Y', description: 'Buy certain quantity and get additional items free or discounted' }
 ]
 
 const statusOptions = [
@@ -81,7 +82,7 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
     // Basic info
     title: promotion?.title || '',
     description: promotion?.description || '',
-    type: (promotion?.type as 'featured_products' | 'flash_sale') || 'featured_products',
+    type: (promotion?.type as 'featured_products' | 'flash_sale' | 'buy_x_get_y') || 'featured_products',
     status: promotion?.status || 'draft',
     priority: promotion?.priority || 1,
     isActive: promotion?.isActive !== false,
@@ -97,7 +98,13 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
     // Flash sale settings
     availableQuantity: promotion?.flashSale?.availableQuantity || 0,
     showCountdown: promotion?.flashSale?.showCountdown !== false,
-    notifyBeforeStart: 60 // minutes
+    notifyBeforeStart: 60, // minutes
+    
+    // Buy X Get Y settings
+    buyQuantity: promotion?.discount?.buyQuantity || 3,
+    getQuantity: promotion?.discount?.getQuantity || 1,
+    getDiscountType: promotion?.discount?.getDiscountType || 'free',
+    getDiscountValue: promotion?.discount?.getDiscountValue || 0
   })
 
   // Convert promotion data to ProductWithPricing format
@@ -146,6 +153,25 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
   const handleProductSelectionChange = useCallback((products: ProductWithPricing[]) => {
     setSelectedProducts(products)
   }, [])
+
+  // Calculate promotional price for Buy X Get Y promotion
+  const calculatePromotionalPrice = useCallback((item: ProductWithPricing) => {
+    const originalPrice = item.product.basePrice || item.product.price;
+    
+    // For Buy X Get Y, calculate promotional price based on current discount settings
+    if (formData.type === 'buy_x_get_y') {
+      if (formData.getDiscountType === 'free') {
+        return 0;
+      } else if (formData.getDiscountType === 'fixed_amount') {
+        return Math.max(0, originalPrice - formData.getDiscountValue);
+      } else if (formData.getDiscountType === 'percentage') {
+        return originalPrice * (1 - formData.getDiscountValue / 100);
+      }
+    }
+    
+    // For other promotion types, use existing promotional price or original price
+    return item.promotionalPrice || originalPrice;
+  }, [formData.type, formData.getDiscountType, formData.getDiscountValue])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -238,6 +264,18 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
             value: selectedProducts[0].discountValue || 0
           } : undefined
         }),
+
+        // Buy X Get Y configuration
+        ...(formData.type === 'buy_x_get_y' && {
+          discount: {
+            type: 'buy_x_get_y',
+            value: formData.getDiscountType === 'free' ? 0 : formData.getDiscountValue, // Add required value field
+            buyQuantity: formData.buyQuantity,
+            getQuantity: formData.getQuantity,
+            getDiscountType: formData.getDiscountType,
+            getDiscountValue: formData.getDiscountType === 'free' ? 0 : formData.getDiscountValue
+          }
+        }),
         
         // For featured products with discounts
         ...(formData.type === 'featured_products' && selectedProducts.some(p => p.promotionalPrice && p.promotionalPrice < (p.product.basePrice || p.product.price)) && {
@@ -249,14 +287,32 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
         
         // Add metadata for product pricing
         metadata: {
-          productPricing: selectedProducts.map(item => ({
-            productId: item.product._id,
-            originalPrice: item.product.basePrice || item.product.price,
-            promotionalPrice: item.promotionalPrice,
-            discountType: item.discountType,
-            discountValue: item.discountValue,
-            savings: (item.product.basePrice || item.product.price) - (item.promotionalPrice || 0)
-          }))
+          productPricing: selectedProducts.map(item => {
+            const originalPrice = item.product.basePrice || item.product.price;
+            let promotionalPrice = item.promotionalPrice;
+            
+            // For Buy X Get Y, calculate promotional price based on discount settings
+            if (formData.type === 'buy_x_get_y' && !promotionalPrice) {
+              if (formData.getDiscountType === 'free') {
+                promotionalPrice = 0;
+              } else if (formData.getDiscountType === 'fixed_amount') {
+                promotionalPrice = Math.max(0, originalPrice - formData.getDiscountValue);
+              } else if (formData.getDiscountType === 'percentage') {
+                promotionalPrice = originalPrice * (1 - formData.getDiscountValue / 100);
+              } else {
+                promotionalPrice = originalPrice; // Fallback
+              }
+            }
+            
+            return {
+              productId: item.product._id,
+              originalPrice: originalPrice,
+              promotionalPrice: promotionalPrice || originalPrice,
+              discountType: item.discountType || formData.getDiscountType || 'fixed_amount',
+              discountValue: item.discountValue || formData.getDiscountValue || 0,
+              savings: originalPrice - (promotionalPrice || originalPrice)
+            };
+          })
         }
       }
 
@@ -434,15 +490,18 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
           </CardContent>
         </Card>
 
-        {/* Product Selection with Pricing */}
+        {/* Product Selection with Pricing - Hide pricing for Buy X Get Y */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Product Selection & Pricing
+              {formData.type === 'buy_x_get_y' ? 'Product Selection' : 'Product Selection & Pricing'}
             </CardTitle>
             <CardDescription>
-              Choose products and set their promotional pricing
+              {formData.type === 'buy_x_get_y' 
+                ? 'Choose products that are eligible for this Buy X Get Y promotion'
+                : 'Choose products and set their promotional pricing'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -512,6 +571,117 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
           </Card>
         )}
 
+        {/* Buy X Get Y Specific Settings */}
+        {formData.type === 'buy_x_get_y' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5" />
+                Buy X Get Y Settings
+              </CardTitle>
+              <CardDescription>
+                Configure buy and get quantities for this promotion
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="buyQuantity">Buy Quantity</Label>
+                  <Input
+                    id="buyQuantity"
+                    type="number"
+                    min="1"
+                    value={formData.buyQuantity}
+                    onChange={(e) => handleInputChange('buyQuantity', parseInt(e.target.value) || 3)}
+                    placeholder="Quantity to buy"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of items customer must buy
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="getQuantity">Get Quantity</Label>
+                  <Input
+                    id="getQuantity"
+                    type="number"
+                    min="1"
+                    value={formData.getQuantity}
+                    onChange={(e) => handleInputChange('getQuantity', parseInt(e.target.value) || 1)}
+                    placeholder="Quantity to get"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of items customer will get
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="getDiscountType">Get Type</Label>
+                  <Select 
+                    value={formData.getDiscountType} 
+                    onValueChange={(value) => handleInputChange('getDiscountType', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Free (100% off)</SelectItem>
+                      <SelectItem value="percentage">Percentage discount</SelectItem>
+                      <SelectItem value="fixed_amount">Fixed amount discount</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Get Discount Value - Show only for percentage and fixed_amount */}
+              {(formData.getDiscountType === 'percentage' || formData.getDiscountType === 'fixed_amount') && (
+                <div className="space-y-2">
+                  <Label htmlFor="getDiscountValue">
+                    {formData.getDiscountType === 'percentage' ? 'Discount Percentage (%)' : 'Discount Amount (฿)'}
+                  </Label>
+                  <Input
+                    id="getDiscountValue"
+                    type="number"
+                    min="0"
+                    max={formData.getDiscountType === 'percentage' ? "100" : undefined}
+                    step={formData.getDiscountType === 'percentage' ? "0.1" : "1"}
+                    value={formData.getDiscountValue}
+                    onChange={(e) => handleInputChange('getDiscountValue', parseFloat(e.target.value) || 0)}
+                    placeholder={formData.getDiscountType === 'percentage' ? 'e.g., 10 for 10%' : 'e.g., 100 for ฿100'}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.getDiscountType === 'percentage' 
+                      ? 'Enter percentage discount (0-100)' 
+                      : 'Enter fixed discount amount in Baht'}
+                  </p>
+                </div>
+              )}
+
+              {/* Preview */}
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2">Promotion Preview</h4>
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium">Buy {formData.buyQuantity}</span> items, 
+                  <span className="font-medium text-green-600"> get {formData.getQuantity}</span> items{' '}
+                  {formData.getDiscountType === 'free' 
+                    ? 'FREE' 
+                    : formData.getDiscountType === 'percentage'
+                      ? `with ${formData.getDiscountValue || 0}% discount`
+                      : formData.getDiscountType === 'fixed_amount'
+                        ? `with ฿${formData.getDiscountValue || 0} discount`
+                        : `with ${formData.getDiscountType} discount`
+                  }
+                </p>
+                {(formData.getDiscountType === 'percentage' || formData.getDiscountType === 'fixed_amount') && !formData.getDiscountValue && (
+                  <p className="text-xs text-orange-600 mt-2">
+                    ⚠️ Please set the discount value above
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Summary */}
         {selectedProducts.length > 0 && (
           <Card>
@@ -534,7 +704,7 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
                 <div>
                   <p className="font-medium">Total Promotional Value</p>
                   <p className="text-2xl font-bold text-green-600">
-                    ฿{selectedProducts.reduce((sum, item) => sum + (item.promotionalPrice || 0), 0).toLocaleString()}
+                    ฿{selectedProducts.reduce((sum, item) => sum + calculatePromotionalPrice(item), 0).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -576,7 +746,7 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
                             ฿{(item.product.basePrice || item.product.price || 0).toLocaleString()}
                           </span>
                           <span className="text-sm font-medium text-green-600">
-                            ฿{(item.promotionalPrice || 0).toLocaleString()}
+                            ฿{calculatePromotionalPrice(item).toLocaleString()}
                           </span>
                         </div>
                       </div>

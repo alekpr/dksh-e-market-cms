@@ -63,7 +63,7 @@ interface ProductWithPricing {
 interface ProductSelectorWithPricingProps {
   selectedProducts: ProductWithPricing[]
   onSelectionChange: (products: ProductWithPricing[]) => void
-  promotionType: 'featured_products' | 'flash_sale'
+  promotionType: 'featured_products' | 'flash_sale' | 'buy_x_get_y'
   maxSelection?: number
   storeId?: string // Add storeId prop for filtering products by store
 }
@@ -262,68 +262,80 @@ export function ProductSelectorWithPricing({
                     </div>
                   </div>
 
-                  {/* Pricing Configuration */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
-                    {promotionType === 'flash_sale' && (
-                      <>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Discount Type</Label>
-                          <Select 
-                            value={item.discountType} 
-                            onValueChange={(value) => handlePricingUpdate(item.product._id, 'discountType', value)}
-                          >
-                            <SelectTrigger className="h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="percentage">Percentage (%)</SelectItem>
-                              <SelectItem value="fixed_amount">Fixed Amount (฿)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  {/* Pricing Configuration - Hide for Buy X Get Y */}
+                  {promotionType !== 'buy_x_get_y' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
+                      {promotionType === 'flash_sale' && (
+                        <>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Discount Type</Label>
+                            <Select 
+                              value={item.discountType} 
+                              onValueChange={(value) => handlePricingUpdate(item.product._id, 'discountType', value)}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                <SelectItem value="fixed_amount">Fixed Amount (฿)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-xs">
-                            Discount Value {item.discountType === 'percentage' ? '(%)' : '(฿)'}
-                          </Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max={item.discountType === 'percentage' ? 100 : undefined}
-                            value={item.discountValue || 0}
-                            onChange={(e) => handlePricingUpdate(item.product._id, 'discountValue', parseFloat(e.target.value) || 0)}
-                            className="h-8"
-                            placeholder="0"
-                          />
-                        </div>
-                      </>
-                    )}
+                          <div className="space-y-1">
+                            <Label className="text-xs">
+                              Discount Value {item.discountType === 'percentage' ? '(%)' : '(฿)'}
+                            </Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max={item.discountType === 'percentage' ? 100 : undefined}
+                              value={item.discountValue || 0}
+                              onChange={(e) => handlePricingUpdate(item.product._id, 'discountValue', parseFloat(e.target.value) || 0)}
+                              className="h-8"
+                              placeholder="0"
+                            />
+                          </div>
+                        </>
+                      )}
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">
-                        {promotionType === 'flash_sale' ? 'Sale Price (฿)' : 'Promotional Price (฿)'}
-                      </Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.promotionalPrice || 0}
-                        onChange={(e) => handlePricingUpdate(item.product._id, 'promotionalPrice', parseFloat(e.target.value) || 0)}
-                        className="h-8"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    {/* Savings Display */}
-                    {item.promotionalPrice && item.promotionalPrice < (item.product.basePrice || item.product.price) && (
-                      <div className="flex items-center gap-2 text-green-600">
-                        <DollarSign className="h-4 w-4" />
-                        <span className="text-sm font-medium">
-                          Save ฿{((item.product.basePrice || item.product.price) - item.promotionalPrice).toLocaleString()}
-                        </span>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {promotionType === 'flash_sale' ? 'Sale Price (฿)' : 'Promotional Price (฿)'}
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.promotionalPrice || 0}
+                          onChange={(e) => handlePricingUpdate(item.product._id, 'promotionalPrice', parseFloat(e.target.value) || 0)}
+                          className="h-8"
+                          placeholder="0.00"
+                        />
                       </div>
-                    )}
-                  </div>
+
+                      {/* Savings Display */}
+                      {item.promotionalPrice && item.promotionalPrice < (item.product.basePrice || item.product.price) && (
+                        <div className="flex items-center gap-2 text-green-600">
+                          <DollarSign className="h-4 w-4" />
+                          <span className="text-sm font-medium">
+                            Save ฿{((item.product.basePrice || item.product.price) - item.promotionalPrice).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Buy X Get Y - Show only product info */}
+                  {promotionType === 'buy_x_get_y' && (
+                    <div className="flex-1">
+                      <div className="text-sm text-muted-foreground">
+                        <p><span className="font-medium">Original Price:</span> ฿{(item.product.basePrice || item.product.price).toLocaleString()}</p>
+                        <p className="text-xs mt-1">Discount will be applied based on Buy X Get Y settings</p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Remove Button */}
                   <Button
