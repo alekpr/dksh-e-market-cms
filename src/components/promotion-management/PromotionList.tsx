@@ -91,6 +91,8 @@ const formatPromotionType = (type: string) => {
       return 'Coupon'
     case 'buy_x_get_y':
       return 'Buy X Get Y'
+    case 'quantity_discount':
+      return 'Quantity Discount'
     case 'free_shipping':
       return 'Free Shipping'
     default:
@@ -212,6 +214,8 @@ export function PromotionList({ onEdit, onView, onCreate }: PromotionListProps) 
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="featured_products">Featured Products</SelectItem>
                   <SelectItem value="flash_sale">Flash Sale</SelectItem>
+                  <SelectItem value="buy_x_get_y">Buy X Get Y</SelectItem>
+                  <SelectItem value="quantity_discount">Quantity Discount</SelectItem>
                   <SelectItem value="promotional_banner">Banner</SelectItem>
                   <SelectItem value="discount_coupon">Coupon</SelectItem>
                 </SelectContent>

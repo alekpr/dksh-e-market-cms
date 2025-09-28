@@ -568,6 +568,18 @@ export interface PromotionFlashSale {
   showCountdown: boolean;
 }
 
+export interface QuantityDiscountTier {
+  minQuantity: number;
+  discountAmount: number;
+  maxDiscount?: number;
+}
+
+export interface PromotionQuantityDiscount {
+  tiers: QuantityDiscountTier[];
+  applyTo: 'per_item' | 'total_order';
+  description?: string;
+}
+
 export interface PromotionTargeting {
   userRoles?: string[];
   stores?: string[];
@@ -600,7 +612,7 @@ export interface Promotion {
   _id: string;
   title: string;
   description?: string;
-  type: 'featured_products' | 'flash_sale' | 'promotional_banner' | 'discount_coupon' | 'buy_x_get_y' | 'free_shipping';
+  type: 'featured_products' | 'flash_sale' | 'promotional_banner' | 'discount_coupon' | 'buy_x_get_y' | 'quantity_discount' | 'free_shipping';
   status: 'draft' | 'scheduled' | 'active' | 'paused' | 'expired' | 'cancelled';
   priority: number;
   startDate: string;
@@ -613,6 +625,7 @@ export interface Promotion {
   banner?: PromotionBanner;
   featuredProducts?: PromotionFeaturedProducts;
   flashSale?: PromotionFlashSale;
+  quantityDiscount?: PromotionQuantityDiscount;
   targeting?: PromotionTargeting;
   analytics: PromotionAnalytics;
   createdBy: string | User;
@@ -642,6 +655,7 @@ export interface CreatePromotionRequest {
   banner?: PromotionBanner;
   featuredProducts?: PromotionFeaturedProducts;
   flashSale?: PromotionFlashSale;
+  quantityDiscount?: PromotionQuantityDiscount;
   targeting?: PromotionTargeting;
   isActive?: boolean;
   metadata?: Record<string, any>;
@@ -661,6 +675,7 @@ export interface UpdatePromotionRequest {
   banner?: PromotionBanner;
   featuredProducts?: PromotionFeaturedProducts;
   flashSale?: PromotionFlashSale;
+  quantityDiscount?: PromotionQuantityDiscount;
   targeting?: PromotionTargeting;
   isActive?: boolean;
   metadata?: Record<string, any>;

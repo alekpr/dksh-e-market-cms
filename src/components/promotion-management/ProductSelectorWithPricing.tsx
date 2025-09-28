@@ -63,7 +63,7 @@ interface ProductWithPricing {
 interface ProductSelectorWithPricingProps {
   selectedProducts: ProductWithPricing[]
   onSelectionChange: (products: ProductWithPricing[]) => void
-  promotionType: 'featured_products' | 'flash_sale' | 'buy_x_get_y'
+  promotionType: 'featured_products' | 'flash_sale' | 'buy_x_get_y' | 'quantity_discount'
   maxSelection?: number
   storeId?: string // Add storeId prop for filtering products by store
 }
@@ -262,8 +262,8 @@ export function ProductSelectorWithPricing({
                     </div>
                   </div>
 
-                  {/* Pricing Configuration - Hide for Buy X Get Y */}
-                  {promotionType !== 'buy_x_get_y' && (
+                  {/* Pricing Configuration - Hide for Buy X Get Y and Quantity Discount */}
+                  {promotionType !== 'buy_x_get_y' && promotionType !== 'quantity_discount' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
                       {promotionType === 'flash_sale' && (
                         <>
@@ -333,6 +333,16 @@ export function ProductSelectorWithPricing({
                       <div className="text-sm text-muted-foreground">
                         <p><span className="font-medium">Original Price:</span> ฿{(item.product.basePrice || item.product.price).toLocaleString()}</p>
                         <p className="text-xs mt-1">Discount will be applied based on Buy X Get Y settings</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quantity Discount - Show only product info */}
+                  {promotionType === 'quantity_discount' && (
+                    <div className="flex-1">
+                      <div className="text-sm text-muted-foreground">
+                        <p><span className="font-medium">Original Price:</span> ฿{(item.product.basePrice || item.product.price).toLocaleString()}</p>
+                        <p className="text-xs mt-1">Bulk discount will be applied based on quantity tiers</p>
                       </div>
                     </div>
                   )}

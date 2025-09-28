@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { ProductSelectorWithPricing } from './ProductSelectorWithPricing'
+import { QuantityDiscountConfig } from './QuantityDiscountConfig'
 import type { Promotion, CreatePromotionRequest, UpdatePromotionRequest } from '@/lib/api'
 import { API_BASE_URL } from '@/lib/api'
 
@@ -67,7 +68,8 @@ interface PromotionFormSimplifiedProps {
 const promotionTypes = [
   { value: 'featured_products', label: 'Featured Products', description: 'Highlight and promote specific products with optional discounts' },
   { value: 'flash_sale', label: 'Flash Sale', description: 'Time-limited special pricing on selected products' },
-  { value: 'buy_x_get_y', label: 'Buy X Get Y', description: 'Buy certain quantity and get additional items free or discounted' }
+  { value: 'buy_x_get_y', label: 'Buy X Get Y', description: 'Buy certain quantity and get additional items free or discounted' },
+  { value: 'quantity_discount', label: 'Quantity Discount', description: 'Bulk discount: buy X items get fixed amount discount' }
 ]
 
 const statusOptions = [
@@ -82,7 +84,7 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
     // Basic info
     title: promotion?.title || '',
     description: promotion?.description || '',
-    type: (promotion?.type as 'featured_products' | 'flash_sale' | 'buy_x_get_y') || 'featured_products',
+    type: (promotion?.type as 'featured_products' | 'flash_sale' | 'buy_x_get_y' | 'quantity_discount') || 'featured_products',
     status: promotion?.status || 'draft',
     priority: promotion?.priority || 1,
     isActive: promotion?.isActive !== false,
@@ -100,11 +102,18 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
     showCountdown: promotion?.flashSale?.showCountdown !== false,
     notifyBeforeStart: 60, // minutes
     
-    // Buy X Get Y settings
+        // Buy X Get Y settings
     buyQuantity: promotion?.discount?.buyQuantity || 3,
     getQuantity: promotion?.discount?.getQuantity || 1,
     getDiscountType: promotion?.discount?.getDiscountType || 'free',
-    getDiscountValue: promotion?.discount?.getDiscountValue || 0
+    getDiscountValue: promotion?.discount?.getDiscountValue || 0,
+    
+    // Quantity Discount settings
+    quantityDiscount: {
+      tiers: promotion?.quantityDiscount?.tiers || [{ minQuantity: 5, discountAmount: 100 }],
+      applyTo: promotion?.quantityDiscount?.applyTo || 'total_order',
+      description: promotion?.quantityDiscount?.description || ''
+    }
   })
 
   // Convert promotion data to ProductWithPricing format
@@ -274,6 +283,15 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
             getQuantity: formData.getQuantity,
             getDiscountType: formData.getDiscountType,
             getDiscountValue: formData.getDiscountType === 'free' ? 0 : formData.getDiscountValue
+          }
+        }),
+
+        // Quantity Discount configuration
+        ...(formData.type === 'quantity_discount' && {
+          quantityDiscount: {
+            tiers: formData.quantityDiscount.tiers,
+            applyTo: formData.quantityDiscount.applyTo,
+            description: formData.quantityDiscount.description
           }
         }),
         
@@ -495,11 +513,15 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              {formData.type === 'buy_x_get_y' ? 'Product Selection' : 'Product Selection & Pricing'}
+              {formData.type === 'buy_x_get_y' || formData.type === 'quantity_discount' 
+                ? 'Product Selection' 
+                : 'Product Selection & Pricing'}
             </CardTitle>
             <CardDescription>
               {formData.type === 'buy_x_get_y' 
                 ? 'Choose products that are eligible for this Buy X Get Y promotion'
+                : formData.type === 'quantity_discount'
+                  ? 'Choose products that are eligible for quantity-based bulk discount'
                 : 'Choose products and set their promotional pricing'
               }
             </CardDescription>
@@ -680,6 +702,20 @@ export function PromotionFormSimplified({ promotion, onSubmit, onCancel, loading
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Quantity Discount Specific Settings */}
+        {formData.type === 'quantity_discount' && (
+          <QuantityDiscountConfig
+            tiers={formData.quantityDiscount.tiers}
+            onChange={(tiers) => setFormData(prev => ({
+              ...prev,
+              quantityDiscount: {
+                ...prev.quantityDiscount,
+                tiers
+              }
+            }))}
+          />
         )}
 
         {/* Summary */}
